@@ -72,18 +72,74 @@ function setSyncStatus(state) {
   const status = el('sync-status');
   const map = {
     connecting:   '🟡 Connexion au fil partagé…',
-    online:       '🟢 Partagé en temps réel avec tous les visiteurs',
-    error:        '🟠 Fil partagé indisponible — annonces visibles sur cet appareil seulement pour le moment',
-    stuck:        '🟠 Connexion bloquée — essaie de désactiver le Relais privé iCloud (Réglages → [ton nom] → iCloud) ou un VPN, puis recharge',
+    online:       '🟢 Partagé (vérification toutes les 12s) avec tous les visiteurs',
+    error:        '🟠 Fil partagé indisponible pour le moment — nouvelle tentative automatique en cours',
     'offline-local': '⚪ Mode local uniquement — configure firebase-config.js pour partager les annonces avec tout le monde',
   };
   status.textContent = map[state] || '';
 }
 
+const POLL_INTERVAL_MS = 12000;
+let pollTimer = null;
+let migrated = false;
+let localBeforeSync = [];
+
+// =====================================================================
+// SONDAGE PÉRIODIQUE (remplace l'ancienne écoute temps réel onSnapshot)
+// -----------------------------------------------------------------------
+// Diagnostic établi le 24/07 : une lecture ponctuelle (.get()) obtient
+// systématiquement une confirmation du serveur (en ~25-30s selon le
+// réseau), alors que l'écoute persistante (.onSnapshot()) ne s'est JAMAIS
+// confirmée sur aucun appareil testé (Mac/iPhone, Chrome/Safari, wifi/4G),
+// avec ou sans réglage de transport particulier. Plutôt que de continuer à
+// deviner pourquoi les connexions persistantes échouent dans cet
+// environnement, on s'appuie sur ce qui est prouvé fonctionner : des
+// lectures ponctuelles répétées. Contrepartie assumée : ce n'est plus du
+// vrai "temps réel" (délai de quelques secondes à ~12s), et le coût en
+// lectures Firestore est plus élevé qu'un vrai listener à grande échelle.
+// =====================================================================
+
+async function pollFirestore(isFirstPoll) {
+  try {
+    const snap = await db.collection('annonces').orderBy('createdAt', 'desc').limit(200).get();
+    console.info(`[UEI][debug] sondage reçu : ${snap.docs.length} document(s), fromCache=${snap.metadata.fromCache}`);
+    cache = snap.docs.map(d => d.data());
+    saveLocalCache(cache);
+    firebaseReady = true;
+    setSyncStatus('online');
+
+    // Migration ascendante (une seule fois, après le tout premier sondage
+    // réussi) : toute annonce créée localement avant que Firestore ne soit
+    // joignable est renvoyée vers le fil partagé. set(...,{merge:true}) est
+    // idempotent par id, donc sans risque même si l'annonce existe déjà.
+    if (!migrated) {
+      migrated = true;
+      const knownIds = new Set(cache.map(a => a.id));
+      const orphans = localBeforeSync.filter(a => !knownIds.has(a.id));
+      if (orphans.length) {
+        console.info(`[UEI] ${orphans.length} annonce(s) locale(s) migrée(s) vers le fil partagé.`);
+        cache = [...orphans, ...cache].sort((a, b) => b.createdAt - a.createdAt);
+        saveLocalCache(cache);
+        orphans.forEach(a => {
+          db.collection('annonces').doc(a.id).set(a, { merge: true })
+            .catch((err) => console.warn('[UEI] Échec migration annonce locale', a.id, err));
+        });
+      }
+    }
+
+    renderFeed();
+    return true;
+  } catch (err) {
+    console.warn('[UEI] Échec de synchronisation Firestore (nouvelle tentative au prochain sondage)', err);
+    if (!firebaseReady) setSyncStatus('error');
+    return false;
+  }
+}
+
 function initSync() {
   return new Promise((resolve) => {
     cache = loadLocalCache();
-    const localBeforeSync = cache; // conservé pour migration ascendante (voir plus bas)
+    localBeforeSync = cache; // conservé pour la migration ascendante
     renderFeed();
 
     const cfg = window.UEI_FIREBASE_CONFIG;
@@ -95,106 +151,44 @@ function initSync() {
     }
 
     setSyncStatus('connecting');
-    let settled = false;
-    let migrated = false;
-    const settleOnce = () => { if (!settled) { settled = true; resolve(); } };
-    const timeoutId = setTimeout(settleOnce, 4000); // ne bloque pas indéfiniment l'affichage initial (contenu local déjà visible)
-    // Filet supplémentaire : certains environnements (relais privé iCloud, VPN,
-    // proxy) laissent la connexion Firestore bloquée en "connexion..." sans
-    // jamais la confirmer NI renvoyer d'erreur explicite — un silence total qui,
-    // sans ce filet, laisserait le badge tourner indéfiniment sans explication.
-    const stuckWatchdog = setTimeout(() => {
-      if (!firebaseReady) setSyncStatus('stuck');
-    }, 50000); // 50s : le diagnostic a montré des connexions lentes mais fonctionnelles jusqu'à ~33s
-
     try {
       firebase.initializeApp(cfg);
       db = firebase.firestore();
-      // Le réglage "experimentalForceLongPolling" précédemment utilisé ici
-      // (pour tenter de corriger un souci Safari) s'est révélé être la cause
-      // du blocage : la page de diagnostic minimale (sans ce réglage) arrivait
-      // à obtenir une confirmation serveur, alors que l'app avec ce réglage
-      // restait bloquée indéfiniment sur des écritures locales jamais
-      // confirmées (fromCache=true, hasPendingWrites=true en permanence).
-      // On repasse donc aux réglages 100% par défaut de Firestore.
-      // Limité à 200 (au lieu de 500) : avec Firestore, CHAQUE création/mise à
-      // jour d'annonce est renvoyée à TOUS les visiteurs connectés en écoute
-      // (facturé comme une lecture par visiteur et par changement). Avec des
-      // centaines de visiteurs simultanés, une limite plus large multiplie
-      // directement le risque de dépasser le quota gratuit journalier. 200
-      // annonces récentes couvrent largement les besoins d'une crise locale.
-      db.collection('annonces').orderBy('createdAt', 'desc').limit(200)
-        .onSnapshot(
-          (snap) => {
-            const confirmed = !snap.metadata.fromCache; // true seulement si le SERVEUR a répondu, pas juste le cache local
-            console.info(`[UEI][debug] onSnapshot reçu : ${snap.docs.length} document(s), fromCache=${snap.metadata.fromCache}, hasPendingWrites=${snap.metadata.hasPendingWrites}`);
-            cache = snap.docs.map(d => d.data());
-            saveLocalCache(cache); // copie locale de secours si la connexion tombe ensuite
-
-            if (confirmed) {
-              // Bug corrigé : avant, le badge passait à "en ligne" dès le
-              // premier instantané reçu, MÊME s'il ne venait que du cache
-              // local (fromCache=true) — ce qui pouvait afficher "partagé en
-              // temps réel" alors que la connexion au serveur n'était en
-              // réalité jamais établie (observé sur Safari : le badge
-              // devenait vert en restant bloqué sur un contenu purement
-              // local). Le badge ne dit maintenant "en ligne" que lorsque
-              // Firestore confirme avoir reçu une réponse du serveur.
-              firebaseReady = true;
-              setSyncStatus('online');
-              clearTimeout(stuckWatchdog);
-            } else if (!firebaseReady) {
-              setSyncStatus('connecting');
-            }
-
-            // Migration ascendante (une seule fois par session) : toute annonce
-            // créée localement AVANT que Firestore ne soit joignable (config
-            // ajoutée après coup, ou panne réseau temporaire) est automatiquement
-            // renvoyée vers le fil partagé, pour ne jamais perdre de contenu
-            // lors d'une mise à jour ou d'un changement de mode de stockage.
-            // Exécutée dès le premier instantané (même depuis le cache local) :
-            // l'écriture set(..., {merge:true}) est idempotente par id, donc
-            // sans risque même si l'annonce existe déjà côté serveur.
-            if (!migrated) {
-              migrated = true;
-              const knownIds = new Set(cache.map(a => a.id));
-              const orphans = localBeforeSync.filter(a => !knownIds.has(a.id));
-              if (orphans.length) {
-                console.info(`[UEI] ${orphans.length} annonce(s) locale(s) migrée(s) vers le fil partagé.`);
-                // On les garde visibles tout de suite dans le fil (pas d'attente
-                // de l'aller-retour serveur, pour qu'elles ne "disparaissent"
-                // jamais un instant pendant la migration), tout en les envoyant
-                // en arrière-plan vers Firestore pour qu'elles deviennent
-                // visibles par tout le monde.
-                cache = [...orphans, ...cache].sort((a, b) => b.createdAt - a.createdAt);
-                saveLocalCache(cache);
-                orphans.forEach(a => {
-                  db.collection('annonces').doc(a.id).set(a, { merge: true })
-                    .catch((err) => console.warn('[UEI] Échec migration annonce locale', a.id, err));
-                });
-              }
-            }
-
-            renderFeed();
-            if (confirmed) { clearTimeout(timeoutId); settleOnce(); }
-          },
-          (err) => {
-            console.warn('[UEI] Firestore indisponible, repli sur le mode local', err);
-            firebaseReady = false;
-            setSyncStatus('error');
-            clearTimeout(timeoutId);
-            clearTimeout(stuckWatchdog);
-            settleOnce();
-          }
-        );
     } catch (err) {
       console.warn('[UEI] Firebase indisponible, mode local de secours', err);
       setSyncStatus('offline-local');
-      clearTimeout(timeoutId);
-      clearTimeout(stuckWatchdog);
-      settleOnce();
+      resolve();
+      return;
     }
+
+    // Premier sondage : on attend son résultat (max 4s, le contenu local
+    // est déjà affiché entre-temps) avant de laisser l'app continuer,
+    // pour pouvoir importer un lien partagé une fois qu'on sait si on est
+    // en ligne ou non.
+    let settled = false;
+    const settleOnce = () => { if (!settled) { settled = true; clearTimeout(fallbackTimeoutId); resolve(); } };
+    const fallbackTimeoutId = setTimeout(settleOnce, 4000);
+    if (typeof fallbackTimeoutId.unref === 'function') fallbackTimeoutId.unref();
+    pollFirestore(true).finally(settleOnce);
+
+    // Sondage périodique en arrière-plan.
+    clearInterval(pollTimer);
+    pollTimer = setInterval(() => pollFirestore(false), POLL_INTERVAL_MS);
+    // .unref() : en Node.js (tests automatisés), un setInterval actif
+    // empêche le process de se terminer naturellement — sans incidence en
+    // navigateur, où cette méthode n'existe pas (d'où la vérification).
+    if (typeof pollTimer.unref === 'function') pollTimer.unref();
   });
+}
+
+function scheduleQuickSync() {
+  // Après une écriture, on redemande un sondage un peu plus tôt que le
+  // prochain cycle automatique (12s), pour que la mise à jour se
+  // propage plus vite sans pour autant spammer Firestore de requêtes.
+  if (db) {
+    const t = setTimeout(() => pollFirestore(false), 3000);
+    if (typeof t.unref === 'function') t.unref();
+  }
 }
 
 function addAnnonce(data) {
@@ -203,16 +197,12 @@ function addAnnonce(data) {
   cache = [annonce, ...cache];
   saveLocalCache(cache);
   renderFeed();
-  // On tente l'écriture dès que `db` existe (Firebase configuré), sans
-  // attendre la confirmation "en ligne" (firebaseReady) : Firestore met
-  // lui-même les écritures en attente si la connexion n'est pas encore
-  // stable (cas fréquent sur Safari, où la confirmation peut prendre du
-  // temps) et les envoie dès qu'elle l'est. Attendre firebaseReady ici
-  // créait un trou : toute annonce publiée pendant la phase de connexion
-  // restait purement locale et se faisait ensuite silencieusement
-  // écraser dès le premier instantané Firestore reçu.
+  // On tente l'écriture dès que `db` existe (Firebase configuré) : une
+  // écriture .set() ponctuelle s'est révélée fiable dans nos tests
+  // (contrairement à l'écoute temps réel), même si elle peut prendre
+  // plusieurs secondes à se confirmer sur certains réseaux.
   if (db) {
-    db.collection('annonces').doc(annonce.id).set(annonce).catch((err) => {
+    db.collection('annonces').doc(annonce.id).set(annonce).then(scheduleQuickSync).catch((err) => {
       console.warn('[UEI] Échec de publication partagée, restera visible localement seulement', err);
       showToast("Publiée localement (connexion au fil partagé indisponible)");
     });
@@ -228,7 +218,7 @@ function setStatut(id, statut) {
     // champ "statut" (voir firebase-config.js). Si les règles n'ont pas
     // été mises à jour, cet appel échoue silencieusement et le nouveau
     // statut reste affiché localement seulement — pas de blocage.
-    db.collection('annonces').doc(id).update({ statut }).catch((err) => {
+    db.collection('annonces').doc(id).update({ statut }).then(scheduleQuickSync).catch((err) => {
       console.warn('[UEI] Échec mise à jour du statut côté serveur (règles Firestore à mettre à jour ?)', err);
     });
   }
@@ -237,7 +227,8 @@ function deleteAnnonce(id) {
   cache = cache.filter(a => a.id !== id);
   saveLocalCache(cache);
   if (db) {
-    db.collection('annonces').doc(id).delete().catch((err) => console.warn('[UEI] Échec suppression partagée', err));
+    db.collection('annonces').doc(id).delete().then(scheduleQuickSync)
+      .catch((err) => console.warn('[UEI] Échec suppression partagée', err));
   }
 }
 function importAnnonce(annonce) {
@@ -245,7 +236,7 @@ function importAnnonce(annonce) {
   cache = [annonce, ...cache];
   saveLocalCache(cache);
   if (db) {
-    db.collection('annonces').doc(annonce.id).set(annonce, { merge: true })
+    db.collection('annonces').doc(annonce.id).set(annonce, { merge: true }).then(scheduleQuickSync)
       .catch((err) => console.warn('[UEI] Échec import partagé', err));
   }
   return true;
