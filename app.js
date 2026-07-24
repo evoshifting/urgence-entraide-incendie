@@ -114,6 +114,7 @@ function initSync() {
       db.collection('annonces').orderBy('createdAt', 'desc').limit(500)
         .onSnapshot(
           (snap) => {
+            console.info(`[UEI][debug] onSnapshot reçu : ${snap.docs.length} document(s), fromCache=${snap.metadata.fromCache}, hasPendingWrites=${snap.metadata.hasPendingWrites}`);
             cache = snap.docs.map(d => d.data());
             saveLocalCache(cache); // copie locale de secours si la connexion tombe ensuite
             firebaseReady = true;

@@ -11,7 +11,7 @@
    script tiers, ni gêner la synchronisation en temps réel.
 ===================================================================== */
 
-const CACHE_NAME = 'uei-shell-v6';
+const CACHE_NAME = 'uei-shell-v7';
 const SHELL_FILES = [
   './',
   './index.html',

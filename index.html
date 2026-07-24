@@ -2,6 +2,28 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<script>
+  // Console de debug visible à l'écran, activable en ajoutant ?debug=1 à
+  // l'URL — utile sur mobile pour voir les logs sans matériel de débogage.
+  // Chargé en tout premier pour capturer les logs des scripts suivants.
+  if (new URLSearchParams(location.search).get('debug') === '1') {
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:45vh;overflow-y:auto;background:#111;color:#0f0;font:10px/1.4 monospace;padding:8px;z-index:999999;white-space:pre-wrap;border-top:2px solid #D6451B;';
+    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(box));
+    const log = (type, args) => {
+      const line = document.createElement('div');
+      line.style.color = type === 'error' ? '#f66' : type === 'warn' ? '#fc3' : '#0f0';
+      line.textContent = `[${type}] ` + Array.from(args).map(a => { try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch { return String(a); } }).join(' ');
+      box.appendChild(line);
+      box.scrollTop = box.scrollHeight;
+    };
+    ['log', 'warn', 'error', 'info'].forEach((fn) => {
+      const orig = console[fn].bind(console);
+      console[fn] = (...args) => { orig(...args); log(fn, args); };
+    });
+    window.addEventListener('error', (e) => log('error', [`${e.message} @ ${e.filename}:${e.lineno}`]));
+  }
+</script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
