@@ -110,15 +110,13 @@ function initSync() {
     try {
       firebase.initializeApp(cfg);
       db = firebase.firestore();
-      // Safari (notamment en navigation privée) et certains réseaux restrictifs
-      // (pare-feu d'entreprise, VPN, proxy) gèrent mal le transport temps réel
-      // par défaut de Firestore (WebChannel/streaming) : la connexion peut rester
-      // bloquée en "connexion..." très longtemps, ou sembler active sans jamais
-      // recevoir les mises à jour. La détection automatique
-      // (experimentalAutoDetectLongPolling) échouant encore dans certains cas
-      // sur Safari, on FORCE directement le long-polling plutôt que de laisser
-      // Firestore décider — plus lent à l'initialisation, mais fiable partout.
-      db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
+      // Le réglage "experimentalForceLongPolling" précédemment utilisé ici
+      // (pour tenter de corriger un souci Safari) s'est révélé être la cause
+      // du blocage : la page de diagnostic minimale (sans ce réglage) arrivait
+      // à obtenir une confirmation serveur, alors que l'app avec ce réglage
+      // restait bloquée indéfiniment sur des écritures locales jamais
+      // confirmées (fromCache=true, hasPendingWrites=true en permanence).
+      // On repasse donc aux réglages 100% par défaut de Firestore.
       // Limité à 200 (au lieu de 500) : avec Firestore, CHAQUE création/mise à
       // jour d'annonce est renvoyée à TOUS les visiteurs connectés en écoute
       // (facturé comme une lecture par visiteur et par changement). Avec des
