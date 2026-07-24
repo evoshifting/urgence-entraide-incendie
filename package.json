@@ -1,0 +1,10 @@
+{
+  "name": "urgence-entraide-incendie-tests",
+  "private": true,
+  "scripts": {
+    "test": "node test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

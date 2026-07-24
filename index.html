@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Urgence Entraide Incendie — Biscarrosse / Cap-Ferret</title>
+<meta name="description" content="Mise en relation d'urgence entre victimes des incendies et personnes solidaires : logement, chambres, matériel. Partage instantané via WhatsApp.">
+<meta name="theme-color" content="#22262A">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2322262A%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23D6451B%22>▲</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          urgent: { DEFAULT: '#D6451B', dark: '#B33814', light: '#F5E1D8' },
+          solid:  { DEFAULT: '#1E4B3C', dark: '#143327', light: '#DCE8E2' },
+          signal: { DEFAULT: '#E2A63B', dark: '#C48A25', light: '#FBEED3' },
+          wa:     { DEFAULT: '#25D366', dark: '#1DA851' },
+          warm:   { 50: '#EEEDE6', 100: '#E5E1D3' },
+          ink:    '#22262A',
+          sand:   '#C9B995',
+        },
+        fontFamily: {
+          sans: ['-apple-system','BlinkMacSystemFont','"Segoe UI"','Roboto','Helvetica','Arial','sans-serif'],
+        }
+      }
+    }
+  }
+</script>
+<link rel="stylesheet" href="style.css?v=2">
+<script>
+  // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
+  // on préfère avertir clairement plutôt que laisser un site silencieusement
+  // cassé (des boutons qui ne répondent pas, sans aucune explication).
+  window.addEventListener('error', function (e) {
+    if (document.getElementById('fatal-error-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'fatal-error-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#B33814;color:#fff;padding:10px 16px;font:600 13px system-ui,sans-serif;text-align:center;';
+    b.textContent = "⚠️ Un problème technique empêche le site de fonctionner normalement. Essaie de recharger la page (Ctrl/Cmd + Maj + R). Si ça persiste, appelle directement le 18 ou le 112.";
+    document.body.prepend(b);
+  });
+</script>
+</head>
+<body class="bg-warm-50 text-ink font-sans antialiased min-h-screen flex flex-col">
+
+<!-- Bandeau sécurité officielle -->
+<div class="bg-ink text-warm-50 text-sm px-4 py-2 flex items-center justify-center gap-2 text-center leading-snug">
+  <span aria-hidden="true" class="text-urgent">▲</span>
+  <span><strong>Danger immédiat ?</strong> Appelez le <a href="tel:18" class="underline decoration-urgent decoration-2 font-bold">18</a> (pompiers) ou le <a href="tel:112" class="underline decoration-urgent decoration-2 font-bold">112</a>. Consignes officielles :
+  <a href="https://www.gironde.gouv.fr" target="_blank" rel="noopener" class="underline decoration-urgent decoration-2">gironde.gouv.fr</a></span>
+</div>
+<div class="hazard-stripe h-1.5" aria-hidden="true"></div>
+
+<!-- Header : masthead + CTA permanents -->
+<header class="sticky top-0 z-30 bg-warm-50/95 backdrop-blur border-b border-sand/60">
+  <div class="max-w-2xl mx-auto px-4 pt-3 pb-2.5">
+    <p class="font-mono text-[10px] tracking-[0.18em] uppercase text-ink/50 mb-1">Bulletin citoyen · Bassin d'Arcachon &amp; Métropole bordelaise</p>
+    <div class="flex items-center gap-2.5 min-w-0 mb-3">
+      <span class="hazard-stripe w-8 h-8 rounded-sm shrink-0" aria-hidden="true"></span>
+      <h1 class="text-lg font-black tracking-tight leading-none uppercase truncate">
+        <span class="text-urgent">Urgence</span> <span class="text-ink">Entraide Incendie</span>
+      </h1>
+    </div>
+    <!-- CTA permanents : toujours visibles, où qu'on soit sur la page -->
+    <div class="grid grid-cols-2 gap-2">
+      <button id="btn-demander" class="bg-urgent hover:bg-urgent-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-md py-2.5 flex items-center justify-center gap-1.5">
+        🆘 Demander
+      </button>
+      <button id="btn-proposer" class="bg-solid hover:bg-solid-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-md py-2.5 flex items-center justify-center gap-1.5">
+        🏡 Proposer
+      </button>
+    </div>
+    <p id="sync-status" class="font-mono text-[10px] tracking-wide text-ink/40 mt-2 flex items-center gap-1.5"></p>
+  </div>
+</header>
+
+<main class="flex-1 max-w-2xl mx-auto w-full px-4 pb-16">
+
+  <!-- Bannière d'import via lien partagé -->
+  <div id="import-banner" class="hidden mt-4 bg-solid-light border-l-4 border-solid text-solid-dark text-xs rounded px-3 py-2.5 font-semibold">
+    ✅ Une annonce partagée par lien a été ajoutée au fil.
+  </div>
+
+  <!-- Info stockage local -->
+  <div class="mt-4 bg-white border-l-4 border-sand text-ink/70 text-xs rounded px-3 py-2.5 leading-relaxed">
+    <span class="font-mono uppercase tracking-wide text-ink/50 text-[10px]">Note</span><br>
+    Les annonces sont enregistrées sur cet appareil. Pour qu'une annonce circule, utilise le bouton <strong class="text-ink">« Partager sur WhatsApp »</strong> sur chaque carte : le lien envoyé l'ajoute automatiquement au fil de la personne qui l'ouvre.
+  </div>
+
+  <!-- Tableau de bord rapide -->
+  <div id="stats-bar" class="mt-4 grid grid-cols-2 gap-2 text-center"></div>
+
+  <!-- Recherche + tri -->
+  <section class="mt-4 flex gap-2">
+    <div class="relative flex-1">
+      <input id="search-box" type="search" placeholder="🔍 Rechercher (ex : matelas, camping, chambre…)"
+        class="w-full rounded-md border border-sand px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-solid">
+    </div>
+    <select id="sort-select" class="rounded-md border border-sand px-2 py-2.5 text-xs font-bold uppercase tracking-wide text-ink/70 focus:outline-none focus:ring-2 focus:ring-solid">
+      <option value="recent">Plus récent</option>
+      <option value="ancien">Plus ancien</option>
+      <option value="distance" disabled>Plus proche</option>
+    </select>
+  </section>
+
+  <!-- Vue Fil / Carte + géolocalisation + masquer pourvues -->
+  <section class="mt-3 flex flex-wrap items-center gap-2">
+    <div class="flex rounded-md border border-sand overflow-hidden text-xs font-bold uppercase tracking-wide">
+      <button id="btn-view-feed" data-active="true" class="view-toggle-btn px-3 py-1.5">☰ Fil</button>
+      <button id="btn-view-map" data-active="false" class="view-toggle-btn px-3 py-1.5 border-l border-sand">🗺️ Carte</button>
+    </div>
+    <button id="btn-geoloc" class="text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-md px-3 py-1.5 text-ink/70">📍 Autour de moi</button>
+    <label class="flex items-center gap-1.5 text-xs font-semibold text-ink/60 ml-auto cursor-pointer select-none">
+      <input id="chk-hide-resolved" type="checkbox" class="rounded border-sand">
+      Masquer pourvues/en pause
+    </label>
+  </section>
+
+  <!-- Carte interactive (masquée par défaut, affichée via le bouton "Carte") -->
+  <section id="map-view" class="hidden mt-3 rounded-md border border-sand overflow-hidden">
+    <div id="map-container" style="height: 360px;"></div>
+    <p class="text-[11px] text-ink/40 px-3 py-2 bg-white">📍 Seules les annonces avec une adresse choisie via les suggestions (pas en saisie libre) apparaissent sur la carte.</p>
+  </section>
+
+  <!-- Facettes -->
+  <section class="mt-3 space-y-2">
+    <div id="facet-type" class="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
+    <div id="facet-cat" class="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
+    <div id="facet-zone" class="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
+  </section>
+
+  <!-- Fil d'annonces -->
+  <div class="flex items-center gap-2 mt-6 mb-1">
+    <h2 class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink/50">Fil des annonces</h2>
+    <span class="flex-1 h-px bg-sand/70"></span>
+    <span id="result-count" class="font-mono text-[10px] text-ink/40 shrink-0"></span>
+  </div>
+  <section id="feed" class="mt-2 space-y-3"></section>
+
+  <div id="empty-state" class="hidden text-center py-14 text-ink/40">
+    <p class="text-4xl mb-2">🕊️</p>
+    <p class="font-bold uppercase tracking-tight">Aucune annonce ne correspond</p>
+    <p class="text-sm">Essaie d'élargir tes filtres, ou sois le premier à publier.</p>
+  </div>
+
+  <!-- Pagination -->
+  <div id="pagination" class="hidden flex items-center justify-between gap-3 mt-6"></div>
+</main>
+
+<!-- Modale formulaire annonce -->
+<div id="modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg max-h-[92vh] overflow-y-auto p-5 relative">
+    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl sm:rounded-t-lg" aria-hidden="true"></span>
+    <div class="flex items-center justify-between mb-4 mt-1">
+      <h3 id="modal-title" class="text-lg font-black uppercase tracking-tight">Publier une annonce</h3>
+      <button id="btn-close-modal" class="text-ink/40 hover:text-ink text-2xl leading-none px-2" aria-label="Fermer">×</button>
+    </div>
+
+    <form id="annonce-form" class="space-y-4">
+      <!-- Type -->
+      <div>
+        <span class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-2">Je...</span>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="type-radio-label cursor-pointer border-2 rounded-md p-3 text-center font-bold text-sm">
+            <input type="radio" name="type" value="besoin" class="sr-only" required>
+            🆘 cherche de l'aide
+          </label>
+          <label class="type-radio-label cursor-pointer border-2 rounded-md p-3 text-center font-bold text-sm">
+            <input type="radio" name="type" value="offre" class="sr-only" required>
+            🏡 propose de l'aide
+          </label>
+        </div>
+      </div>
+
+      <!-- Catégorie -->
+      <div>
+        <label for="f-categorie" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Type d'aide</label>
+        <select id="f-categorie" required class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+          <option value="" disabled selected>Choisir…</option>
+          <option value="logement">🏠 Logement entier</option>
+          <option value="chambre">🛏️ Chambre d'amis</option>
+          <option value="accueil_jour">☕ Accueil de jour (repos, douche, recharge tel.)</option>
+          <option value="nourriture">🍽️ Nourriture / eau</option>
+          <option value="materiel">📦 Matériel d'urgence (lit de camp, vêtements, chargeurs…)</option>
+          <option value="transport">🚗 Transport</option>
+          <option value="autre">❔ Autre</option>
+        </select>
+      </div>
+
+      <!-- Localisation précise : autocomplétion d'adresse façon Google Maps -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="relative">
+          <label for="f-commune-input" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Ville</label>
+          <input id="f-commune-input" type="text" required autocomplete="off" placeholder="Tape une ville : Bordeaux, Mérignac, Biscarrosse…"
+            class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+          <input type="hidden" id="f-commune">
+          <input type="hidden" id="f-lat">
+          <input type="hidden" id="f-lon">
+          <ul id="f-commune-suggestions" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-sand rounded-md shadow-lg max-h-56 overflow-y-auto"></ul>
+          <p class="text-[11px] text-ink/40 mt-1">Suggestions officielles (Base Adresse Nationale). Pas d'internet ? Tape simplement le nom, ça marche aussi.</p>
+        </div>
+        <div>
+          <label for="f-quartier" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Quartier / repère</label>
+          <input id="f-quartier" type="text" placeholder="Ex : proche camping, centre-ville…"
+            class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label for="f-description" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Description rapide</label>
+        <textarea id="f-description" required maxlength="220" rows="3" placeholder="Ex : Chambre disponible pour 2 pers., arrivée possible ce soir, parking dispo."
+          class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
+      </div>
+
+      <!-- Contact -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="f-prenom" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Prénom</label>
+          <input id="f-prenom" required type="text" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+        </div>
+        <div>
+          <label for="f-tel" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Téléphone</label>
+          <input id="f-tel" required type="tel" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+        </div>
+      </div>
+
+      <button type="submit" class="w-full bg-urgent hover:bg-urgent-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-md py-3.5">
+        Publier maintenant
+      </button>
+      <p id="form-error" class="hidden text-sm text-urgent font-semibold text-center"></p>
+    </form>
+  </div>
+</div>
+
+<!-- Modale succès + partage WhatsApp immédiat -->
+<div id="share-modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-6 text-center relative overflow-hidden">
+    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5" aria-hidden="true"></span>
+    <p class="text-4xl mb-2 mt-2">✅</p>
+    <h3 class="text-lg font-black uppercase tracking-tight mb-1">Annonce publiée !</h3>
+    <p class="text-sm text-ink/70 mb-5">Partage-la maintenant sur WhatsApp pour qu'elle circule immédiatement dans les groupes d'entraide.</p>
+    <a id="btn-share-whatsapp-now" href="#" target="_blank" rel="noopener"
+      class="w-full flex items-center justify-center gap-2 bg-wa hover:bg-wa-dark active:scale-[0.98] transition text-white font-extrabold text-base rounded-md py-3.5 mb-2">
+      <span class="text-xl">📲</span> Partager sur WhatsApp
+    </a>
+    <button id="btn-close-share-modal" class="w-full text-ink/50 font-semibold text-sm py-2">Plus tard</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-ink text-warm-50 text-sm font-semibold px-4 py-2.5 rounded-md shadow-lg font-mono"></div>
+
+<footer class="max-w-2xl mx-auto w-full px-4 py-6 text-center text-[11px] text-ink/40 leading-relaxed">
+  Site citoyen d'entraide, non affilié aux services officiels. En cas de doute, suivez toujours les consignes de la préfecture et des secours.
+  <br>Fait avec ❤️ pour la solidarité entre voisins.
+  <br><button id="btn-forget-me" class="underline mt-1">Effacer mes informations enregistrées sur cet appareil</button>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js?v=1"></script>
+<script src="app.js?v=3"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => console.warn('[UEI] Service worker non installé', err));
+    });
+  }
+</script>
+</body>
+</html>

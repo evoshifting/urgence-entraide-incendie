@@ -1,0 +1,149 @@
+/* =====================================================================
+   URGENCE ENTRAIDE INCENDIE — direction artistique
+   Signature : bulletin citoyen / registre d'incident. Rayures de danger
+   comme motif de marque, cartes à tranche colorée façon dossier,
+   métadonnées en monospace façon tampon officiel, facettes avec
+   compteurs façon moteur de recherche. Polices système uniquement
+   (aucun webfont) pour rester rapide sur réseau dégradé.
+===================================================================== */
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =====================================================================
+   FILET DE SÉCURITÉ — indépendant du CDN Tailwind (cdn.tailwindcss.com)
+   Le site s'appuie sur Tailwind chargé à l'exécution pour générer TOUTE
+   sa CSS, y compris l'utilitaire .hidden qui pilote l'affichage des
+   modales, bannières et pagination. Si ce script externe est lent,
+   bloqué (bloqueur de pub, pare-feu) ou temporairement indisponible —
+   plausible sur un réseau dégradé pendant une évacuation — ces règles,
+   servies localement avec la page, garantissent que le site reste
+   utilisable : masquage correct, modales en superposition, en-tête
+   fixe. Ce n'est pas un remplacement de Tailwind, juste une garantie
+   minimale de fonctionnement pour les mécanismes critiques.
+===================================================================== */
+.hidden { display: none !important; }
+
+#modal-backdrop:not(.hidden),
+#share-modal-backdrop:not(.hidden) {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(34,38,42,0.6);
+}
+#toast:not(.hidden) {
+  position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+  z-index: 1000; background: #22262A; color: #EEEDE6;
+  padding: 0.6rem 1rem; border-radius: 6px;
+}
+#f-commune-suggestions:not(.hidden) {
+  position: absolute; z-index: 500; left: 0; right: 0;
+  background: #fff; border: 1px solid #C9B995; border-radius: 6px;
+}
+header { position: sticky; top: 0; z-index: 100; }
+
+/* ---- Motif signature : rayures de danger ---- */
+.hazard-stripe {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #D6451B 0px, #D6451B 10px,
+    #22262A 10px, #22262A 20px
+  );
+}
+
+/* ---- Filtres / facettes actives ---- */
+.filter-btn {
+  background: #fff;
+  border-color: #C9B995;
+  color: #22262A99;
+}
+.filter-btn[data-active="true"] {
+  background: #22262A;
+  border-color: #22262A;
+  color: #EEEDE6;
+}
+.facet-count {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  background: rgba(34,38,42,0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.4;
+}
+.filter-btn[data-active="true"] .facet-count {
+  background: rgba(238,237,230,0.2);
+}
+
+/* ---- Radio custom "type" dans le formulaire ---- */
+.type-radio-label {
+  border-color: #C9B995;
+  color: #22262A99;
+  background: #fff;
+}
+.type-radio-label:has(input:checked) {
+  border-color: #22262A;
+  background: #22262A;
+  color: #EEEDE6;
+}
+
+/* ---- Bascule Fil / Carte ---- */
+.view-toggle-btn {
+  background: #fff;
+  color: #22262A99;
+}
+.view-toggle-btn[data-active="true"] {
+  background: #22262A;
+  color: #EEEDE6;
+}
+
+/* ---- Badges de statut ---- */
+.statut-badge--ouvert  { background: rgba(30,75,60,0.12); color: #1E4B3C; }
+.statut-badge--pause   { background: rgba(226,166,59,0.18); color: #C48A25; }
+.statut-badge--pourvu  { background: rgba(34,38,42,0.10); color: #22262A99; }
+.card-annonce--inactive { opacity: 0.55; }
+
+/* ---- Boutons de changement de statut (sur ses propres annonces) ---- */
+.statut-btn {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 3px 7px; border-radius: 4px; border: 1px solid #C9B995; background: #fff; color: #22262A99;
+}
+.statut-btn[data-active="true"] {
+  background: #22262A; border-color: #22262A; color: #EEEDE6;
+}
+
+/* ---- Carte Leaflet : s'assure qu'elle prend bien la hauteur donnée ---- */
+#map-container { width: 100%; z-index: 0; }
+.leaflet-popup-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12.5px; }
+
+/* ---- Suggestions d'adresse (autocomplétion) ---- */
+#f-commune-suggestions li:hover {
+  background: #EEEDE6;
+}
+
+/* ---- Carte annonce : tranche colorée façon dossier ---- */
+.card-annonce {
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+.card-annonce--besoin { border-left-color: #D6451B; }
+.card-annonce--offre  { border-left-color: #1E4B3C; }
+
+/* ---- Apparition légère des cartes ---- */
+.card-enter {
+  animation: cardIn .25s ease-out both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Respect des préférences de réduction de mouvement ---- */
+@media (prefers-reduced-motion: reduce) {
+  .card-enter { animation: none; }
+  .animate-pulse { animation: none; }
+}
+
+/* ---- Zone de sécurité iOS (encoche) ---- */
+footer {
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}

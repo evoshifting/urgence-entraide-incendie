@@ -1,0 +1,15 @@
+{
+  "name": "Urgence Entraide Incendie",
+  "short_name": "Entraide Incendie",
+  "description": "Mise en relation d'urgence entre victimes des incendies et personnes solidaires.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEEDE6",
+  "theme_color": "#22262A",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
