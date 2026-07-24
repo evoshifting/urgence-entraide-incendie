@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Diagnostic Firestore — minimal</title>
+<style>
+  body { font: 14px/1.6 monospace; background: #111; color: #0f0; padding: 16px; white-space: pre-wrap; }
+  .err { color: #f66; }
+  .warn { color: #fc3; }
+  .ok { color: #6f6; font-weight: bold; }
+  h1 { color: #fff; font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>🔬 Diagnostic Firestore minimal (sans le reste de l'app)</h1>
+<div id="log">Démarrage…\n</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js?v=1"></script>
+<script>
+  const logEl = document.getElementById('log');
+  function log(msg, cls) {
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = `[${new Date().toISOString().slice(11,19)}] ${msg}`;
+    logEl.appendChild(line);
+    console.log(msg);
+  }
+
+  log('Config chargée : ' + JSON.stringify(window.UEI_FIREBASE_CONFIG || 'ABSENTE'));
+
+  if (!window.UEI_FIREBASE_CONFIG || window.UEI_FIREBASE_CONFIG.apiKey === 'REMPLACE_MOI') {
+    log('❌ firebase-config.js absent ou non configuré — arrêt.', 'err');
+  } else if (typeof firebase === 'undefined') {
+    log('❌ Le SDK Firebase ne s\'est pas chargé (CDN gstatic.com bloqué ?) — arrêt.', 'err');
+  } else {
+    try {
+      firebase.initializeApp(window.UEI_FIREBASE_CONFIG);
+      log('✅ firebase.initializeApp() a réussi.');
+      const db = firebase.firestore();
+      log('✅ firebase.firestore() a réussi.');
+
+      // TEST 1 : lecture ponctuelle simple (pas un listener, pas de
+      // long-polling forcé, la requête la plus basique possible)
+      log('→ Test 1 : lecture ponctuelle (.get()) de la collection "annonces"…');
+      const t0 = Date.now();
+      db.collection('annonces').get()
+        .then((snap) => {
+          log(`✅ TEST 1 RÉUSSI en ${Date.now() - t0}ms : ${snap.size} document(s) trouvé(s).`, 'ok');
+          snap.forEach((doc) => log('  · doc id=' + doc.id + ' → ' + JSON.stringify(doc.data())));
+          if (snap.size === 0) log('⚠️ La collection semble vide côté serveur.', 'warn');
+        })
+        .catch((err) => {
+          log(`❌ TEST 1 ÉCHOUÉ après ${Date.now() - t0}ms : ${err.code} — ${err.message}`, 'err');
+        });
+
+      // TEST 2 : écriture ponctuelle simple (sans passer par l'app)
+      log('→ Test 2 : écriture ponctuelle d\'un document de test…');
+      const t1 = Date.now();
+      db.collection('annonces').doc('diag-test-doc').set({
+        id: 'diag-test-doc', type: 'offre', categorie: 'autre', commune: 'TEST DIAGNOSTIC',
+        description: 'Document de test créé par la page de diagnostic — à supprimer',
+        contactPrenom: 'Diagnostic', contactTel: '0000000000', createdAt: Date.now(), statut: 'ouvert'
+      }).then(() => {
+        log(`✅ TEST 2 RÉUSSI en ${Date.now() - t1}ms : écriture confirmée par le serveur.`, 'ok');
+      }).catch((err) => {
+        log(`❌ TEST 2 ÉCHOUÉ après ${Date.now() - t1}ms : ${err.code} — ${err.message}`, 'err');
+      });
+
+      // TEST 3 : listener temps réel (onSnapshot), sans AUCUN réglage
+      // spécial (pas de forceLongPolling) — configuration Firestore la
+      // plus simple et par défaut possible
+      log('→ Test 3 : écoute en temps réel (onSnapshot), réglages 100% par défaut…');
+      let snapCount = 0;
+      db.collection('annonces').onSnapshot(
+        (snap) => {
+          snapCount++;
+          log(`📡 TEST 3 — instantané #${snapCount} : ${snap.size} doc(s), fromCache=${snap.metadata.fromCache}`, snap.metadata.fromCache ? 'warn' : 'ok');
+        },
+        (err) => {
+          log(`❌ TEST 3 ÉCHOUÉ (listener) : ${err.code} — ${err.message}`, 'err');
+        }
+      );
+
+      setTimeout(() => {
+        log('--- 20 secondes écoulées ---');
+        if (snapCount === 0) log('❌ Le listener temps réel (Test 3) n\'a JAMAIS reçu le moindre instantané, ni succès ni erreur.', 'err');
+      }, 20000);
+
+    } catch (err) {
+      log('❌ Exception : ' + err.message, 'err');
+    }
+  }
+</script>
+</body>
+</html>
