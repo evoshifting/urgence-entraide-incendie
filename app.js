@@ -111,20 +111,43 @@ function initSync() {
       // sur Safari, on FORCE directement le long-polling plutôt que de laisser
       // Firestore décider — plus lent à l'initialisation, mais fiable partout.
       db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
-      db.collection('annonces').orderBy('createdAt', 'desc').limit(500)
+      // Limité à 200 (au lieu de 500) : avec Firestore, CHAQUE création/mise à
+      // jour d'annonce est renvoyée à TOUS les visiteurs connectés en écoute
+      // (facturé comme une lecture par visiteur et par changement). Avec des
+      // centaines de visiteurs simultanés, une limite plus large multiplie
+      // directement le risque de dépasser le quota gratuit journalier. 200
+      // annonces récentes couvrent largement les besoins d'une crise locale.
+      db.collection('annonces').orderBy('createdAt', 'desc').limit(200)
         .onSnapshot(
           (snap) => {
+            const confirmed = !snap.metadata.fromCache; // true seulement si le SERVEUR a répondu, pas juste le cache local
             console.info(`[UEI][debug] onSnapshot reçu : ${snap.docs.length} document(s), fromCache=${snap.metadata.fromCache}, hasPendingWrites=${snap.metadata.hasPendingWrites}`);
             cache = snap.docs.map(d => d.data());
             saveLocalCache(cache); // copie locale de secours si la connexion tombe ensuite
-            firebaseReady = true;
-            setSyncStatus('online');
+
+            if (confirmed) {
+              // Bug corrigé : avant, le badge passait à "en ligne" dès le
+              // premier instantané reçu, MÊME s'il ne venait que du cache
+              // local (fromCache=true) — ce qui pouvait afficher "partagé en
+              // temps réel" alors que la connexion au serveur n'était en
+              // réalité jamais établie (observé sur Safari : le badge
+              // devenait vert en restant bloqué sur un contenu purement
+              // local). Le badge ne dit maintenant "en ligne" que lorsque
+              // Firestore confirme avoir reçu une réponse du serveur.
+              firebaseReady = true;
+              setSyncStatus('online');
+            } else if (!firebaseReady) {
+              setSyncStatus('connecting');
+            }
 
             // Migration ascendante (une seule fois par session) : toute annonce
             // créée localement AVANT que Firestore ne soit joignable (config
             // ajoutée après coup, ou panne réseau temporaire) est automatiquement
             // renvoyée vers le fil partagé, pour ne jamais perdre de contenu
             // lors d'une mise à jour ou d'un changement de mode de stockage.
+            // Exécutée dès le premier instantané (même depuis le cache local) :
+            // l'écriture set(..., {merge:true}) est idempotente par id, donc
+            // sans risque même si l'annonce existe déjà côté serveur.
             if (!migrated) {
               migrated = true;
               const knownIds = new Set(cache.map(a => a.id));
@@ -146,8 +169,7 @@ function initSync() {
             }
 
             renderFeed();
-            clearTimeout(timeoutId);
-            settleOnce();
+            if (confirmed) { clearTimeout(timeoutId); settleOnce(); }
           },
           (err) => {
             console.warn('[UEI] Firestore indisponible, repli sur le mode local', err);
@@ -329,6 +351,34 @@ function escapeHTML(str = '') {
 }
 function lieuComplet(a) {
   return a.quartier ? `${a.commune} — ${a.quartier}` : a.commune;
+}
+
+/* =====================================================================
+   CHARGEMENT À LA DEMANDE (Leaflet, jsPDF) — pour ne pas alourdir le
+   premier chargement de la page avec des bibliothèques dont la plupart
+   des visiteurs ne se serviront jamais (carte, affiche PDF).
+===================================================================== */
+
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Échec chargement ${src}`));
+    document.head.appendChild(s);
+  });
+}
+function loadStylesheetOnce(href) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`link[href="${href}"]`)) { resolve(); return; }
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    l.onload = () => resolve();
+    l.onerror = () => reject(new Error(`Échec chargement ${href}`));
+    document.head.appendChild(l);
+  });
 }
 function hasCoords(a) {
   return typeof a.lat === 'number' && typeof a.lon === 'number';
@@ -610,9 +660,20 @@ sortSelect.addEventListener('change', () => {
 ===================================================================== */
 
 const BASSIN_ARCACHON_CENTER = [44.66, -1.15];
+let leafletLoadPromise = null;
+
+function ensureLeafletLoaded() {
+  if (typeof L !== 'undefined') return Promise.resolve();
+  if (leafletLoadPromise) return leafletLoadPromise;
+  leafletLoadPromise = Promise.all([
+    loadStylesheetOnce('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'),
+    loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'),
+  ]).catch((err) => console.warn('[UEI] Impossible de charger la carte (Leaflet)', err));
+  return leafletLoadPromise;
+}
 
 function renderMap(list) {
-  if (typeof L === 'undefined') return; // Leaflet indisponible (CDN bloqué) : la vue carte reste simplement inactive
+  if (typeof L === 'undefined') return; // pas encore chargé (ou CDN bloqué) : la vue carte reste simplement inactive
   if (!leafletMap) {
     leafletMap = L.map(mapContainer).setView(BASSIN_ARCACHON_CENTER, 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -651,7 +712,10 @@ function setViewMode(mode) {
     emptyState.classList.add('hidden');
     pagination.classList.add('hidden');
     mapView.classList.remove('hidden');
-    setTimeout(() => leafletMap?.invalidateSize(), 50); // la carte a besoin d'un conteneur visible pour se dimensionner correctement
+    ensureLeafletLoaded().then(() => {
+      setTimeout(() => leafletMap?.invalidateSize(), 50); // la carte a besoin d'un conteneur visible pour se dimensionner correctement
+      renderFeed(); // redessine la carte une fois Leaflet chargé
+    });
   } else {
     mapView.classList.add('hidden');
     feed.classList.remove('hidden');
@@ -705,7 +769,17 @@ chkHideResolved.addEventListener('change', () => {
    AFFICHE PDF IMPRIMABLE (jsPDF, pour les annonces sans smartphone)
 ===================================================================== */
 
-function generatePosterPDF(a) {
+let jspdfLoadPromise = null;
+function ensureJsPDFLoaded() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if (jspdfLoadPromise) return jspdfLoadPromise;
+  jspdfLoadPromise = loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    .catch((err) => console.warn('[UEI] Impossible de charger jsPDF', err));
+  return jspdfLoadPromise;
+}
+
+async function generatePosterPDF(a) {
+  await ensureJsPDFLoaded();
   if (!window.jspdf || !window.jspdf.jsPDF) {
     showToast("Génération PDF indisponible (script non chargé)");
     return;
