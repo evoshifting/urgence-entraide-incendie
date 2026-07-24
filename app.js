@@ -74,6 +74,7 @@ function setSyncStatus(state) {
     connecting:   '🟡 Connexion au fil partagé…',
     online:       '🟢 Partagé en temps réel avec tous les visiteurs',
     error:        '🟠 Fil partagé indisponible — annonces visibles sur cet appareil seulement pour le moment',
+    stuck:        '🟠 Connexion bloquée — essaie de désactiver le Relais privé iCloud (Réglages → [ton nom] → iCloud) ou un VPN, puis recharge',
     'offline-local': '⚪ Mode local uniquement — configure firebase-config.js pour partager les annonces avec tout le monde',
   };
   status.textContent = map[state] || '';
@@ -97,7 +98,14 @@ function initSync() {
     let settled = false;
     let migrated = false;
     const settleOnce = () => { if (!settled) { settled = true; resolve(); } };
-    const timeoutId = setTimeout(settleOnce, 4000); // ne bloque pas indéfiniment sur réseau lent
+    const timeoutId = setTimeout(settleOnce, 4000); // ne bloque pas indéfiniment l'affichage initial (contenu local déjà visible)
+    // Filet supplémentaire : certains environnements (relais privé iCloud, VPN,
+    // proxy) laissent la connexion Firestore bloquée en "connexion..." sans
+    // jamais la confirmer NI renvoyer d'erreur explicite — un silence total qui,
+    // sans ce filet, laisserait le badge tourner indéfiniment sans explication.
+    const stuckWatchdog = setTimeout(() => {
+      if (!firebaseReady) setSyncStatus('stuck');
+    }, 50000); // 50s : le diagnostic a montré des connexions lentes mais fonctionnelles jusqu'à ~33s
 
     try {
       firebase.initializeApp(cfg);
@@ -136,6 +144,7 @@ function initSync() {
               // Firestore confirme avoir reçu une réponse du serveur.
               firebaseReady = true;
               setSyncStatus('online');
+              clearTimeout(stuckWatchdog);
             } else if (!firebaseReady) {
               setSyncStatus('connecting');
             }
@@ -176,6 +185,7 @@ function initSync() {
             firebaseReady = false;
             setSyncStatus('error');
             clearTimeout(timeoutId);
+            clearTimeout(stuckWatchdog);
             settleOnce();
           }
         );
@@ -183,6 +193,7 @@ function initSync() {
       console.warn('[UEI] Firebase indisponible, mode local de secours', err);
       setSyncStatus('offline-local');
       clearTimeout(timeoutId);
+      clearTimeout(stuckWatchdog);
       settleOnce();
     }
   });
