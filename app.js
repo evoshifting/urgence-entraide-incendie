@@ -106,11 +106,11 @@ function initSync() {
       // (pare-feu d'entreprise, VPN, proxy) gèrent mal le transport temps réel
       // par défaut de Firestore (WebChannel/streaming) : la connexion peut rester
       // bloquée en "connexion..." très longtemps, ou sembler active sans jamais
-      // recevoir les mises à jour. On force donc le long-polling, un mode de
-      // transport plus lent à l'initialisation mais bien plus fiable dans ces
-      // environnements contraints — recommandation officielle Firebase pour ce
-      // symptôme précis.
-      db.settings({ experimentalAutoDetectLongPolling: true, useFetchStreams: false });
+      // recevoir les mises à jour. La détection automatique
+      // (experimentalAutoDetectLongPolling) échouant encore dans certains cas
+      // sur Safari, on FORCE directement le long-polling plutôt que de laisser
+      // Firestore décider — plus lent à l'initialisation, mais fiable partout.
+      db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
       db.collection('annonces').orderBy('createdAt', 'desc').limit(500)
         .onSnapshot(
           (snap) => {
