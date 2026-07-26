@@ -400,9 +400,9 @@ function lieuComplet(a) {
 }
 
 /* =====================================================================
-   CHARGEMENT À LA DEMANDE (Leaflet, jsPDF) — pour ne pas alourdir le
-   premier chargement de la page avec des bibliothèques dont la plupart
-   des visiteurs ne se serviront jamais (carte, affiche PDF).
+   CHARGEMENT À LA DEMANDE (Leaflet) — pour ne pas alourdir le premier
+   chargement de la page avec une bibliothèque dont la plupart des
+   visiteurs ne se serviront jamais (carte).
 ===================================================================== */
 
 function loadScriptOnce(src) {
@@ -634,7 +634,6 @@ function cardHTML(a) {
         <button data-copy="${escapeHTML(a.contactTel)}" class="btn-copy min-h-[44px] text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl px-3.5">Copier n°</button>
         <a href="tel:${telClean}" class="min-h-[44px] inline-flex items-center text-xs font-bold bg-urgent hover:bg-urgent-dark text-white rounded-xl px-3.5">📞 Appeler</a>
         <a href="${whatsappLink(a)}" target="_blank" rel="noopener" class="min-h-[44px] inline-flex items-center text-xs font-bold bg-wa hover:bg-wa-dark text-white rounded-xl px-3.5">📲 Partager</a>
-        <button data-pdf="${a.id}" class="btn-pdf min-h-[44px] text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl px-3.5" aria-label="Générer une affiche PDF">🖨️ Affiche</button>
         ${mine ? `<button data-delete="${a.id}" class="btn-delete min-h-[44px] min-w-[44px] text-sm font-semibold text-gray-400 hover:text-urgent" aria-label="Supprimer mon annonce">🗑️</button>` : ''}
       </div>
     </div>
@@ -723,12 +722,6 @@ feed.addEventListener('click', async (e) => {
     setStatut(id, statut);
     showToast(`Statut mis à jour : ${(STATUTS[statut] || {}).label || statut}`);
     return;
-  }
-  const pdfBtn = e.target.closest('.btn-pdf');
-  if (pdfBtn) {
-    const id = pdfBtn.getAttribute('data-pdf');
-    const annonce = cache.find(a => a.id === id);
-    if (annonce) generatePosterPDF(annonce);
   }
 });
 
@@ -872,85 +865,6 @@ chkHideResolved.addEventListener('change', () => {
   currentPage = 1;
   renderFeed();
 });
-
-/* =====================================================================
-   AFFICHE PDF IMPRIMABLE (jsPDF, pour les annonces sans smartphone)
-===================================================================== */
-
-let jspdfLoadPromise = null;
-function ensureJsPDFLoaded() {
-  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
-  if (jspdfLoadPromise) return jspdfLoadPromise;
-  jspdfLoadPromise = loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-    .catch((err) => console.warn('[UEI] Impossible de charger jsPDF', err));
-  return jspdfLoadPromise;
-}
-
-async function generatePosterPDF(a) {
-  await ensureJsPDFLoaded();
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    showToast("Génération PDF indisponible (script non chargé)");
-    return;
-  }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const cat = CATEGORIES[a.categorie] || { label: a.categorie, icon: '' };
-  const pageW = 210;
-  let y = 22;
-
-  doc.setFillColor(34, 38, 42);
-  doc.rect(0, 0, pageW, 14, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('URGENCE ENTRAIDE INCENDIE', pageW / 2, 9.5, { align: 'center' });
-
-  doc.setTextColor(214, 69, 27);
-  doc.setFontSize(26);
-  doc.text(a.type === 'besoin' ? 'RECHERCHE D\'AIDE' : "PROPOSITION D'AIDE", pageW / 2, y + 10, { align: 'center' });
-  y += 24;
-
-  doc.setTextColor(30, 30, 30);
-  doc.setFontSize(18);
-  doc.text(`${cat.label}`, pageW / 2, y, { align: 'center' });
-  y += 12;
-
-  doc.setDrawColor(201, 185, 149);
-  doc.line(20, y, pageW - 20, y);
-  y += 12;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(14);
-  doc.text(`📍 Lieu : ${lieuComplet(a)}`, 20, y);
-  y += 12;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(13);
-  const descLines = doc.splitTextToSize(a.description, pageW - 40);
-  doc.text(descLines, 20, y);
-  y += descLines.length * 7 + 10;
-
-  doc.setDrawColor(201, 185, 149);
-  doc.line(20, y, pageW - 20, y);
-  y += 16;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.setTextColor(30, 75, 60);
-  doc.text(`Contact : ${a.contactPrenom}`, pageW / 2, y, { align: 'center' });
-  y += 14;
-  doc.setFontSize(28);
-  doc.text(a.contactTel, pageW / 2, y, { align: 'center' });
-  y += 16;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Site citoyen d\'entraide, non affilié aux services officiels.', pageW / 2, 280, { align: 'center' });
-  doc.text('Danger immédiat : 18 (pompiers) ou 112.', pageW / 2, 285, { align: 'center' });
-
-  doc.save(`annonce-${a.id}.pdf`);
-}
 
 /* =====================================================================
    AUTOCOMPLÉTION D'ADRESSE (API Adresse — Base Adresse Nationale,
