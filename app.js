@@ -754,7 +754,12 @@ sortSelect.addEventListener('change', () => {
    VUE CARTE (Leaflet / OpenStreetMap, gratuit, sans clé)
 ===================================================================== */
 
-const BASSIN_ARCACHON_CENTER = [44.66, -1.15];
+// Centre + zoom couvrant toute la zone touchée par l'incendie (au nord de
+// Lacanau, au sud de Biscarrosse, à l'ouest et au sud de Bordeaux) — pas
+// seulement le Bassin d'Arcachon, pour ne pas paraître arbitrairement
+// zoomé sur un seul secteur au chargement initial.
+const DEFAULT_MAP_CENTER = [44.72, -1.0];
+const DEFAULT_MAP_ZOOM = 9;
 let leafletLoadPromise = null;
 
 function ensureLeafletLoaded() {
@@ -770,7 +775,7 @@ function ensureLeafletLoaded() {
 function renderMap(list) {
   if (typeof L === 'undefined') return; // pas encore chargé (ou CDN bloqué) : la vue carte reste simplement inactive
   if (!leafletMap) {
-    leafletMap = L.map(mapContainer).setView(BASSIN_ARCACHON_CENTER, 11);
+    leafletMap = L.map(mapContainer).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19,
@@ -781,9 +786,9 @@ function renderMap(list) {
   const withCoords = list.filter(hasCoords);
   withCoords.forEach(a => {
     const cat = CATEGORIES[a.categorie] || { label: a.categorie, icon: '❔' };
-    const color = a.type === 'besoin' ? '#D6451B' : '#1E4B3C';
+    const color = a.type === 'besoin' ? '#EA580C' : '#059669';
     const marker = L.circleMarker([a.lat, a.lon], {
-      radius: 9, color: '#22262A', weight: 1.5, fillColor: color, fillOpacity: 0.9,
+      radius: 9, color: '#111827', weight: 1.5, fillColor: color, fillOpacity: 0.9,
     });
     marker.bindPopup(`
       <strong>${a.type === 'besoin' ? '🆘 Cherche' : '🤝 Propose'} — ${escapeHTML(cat.label)}</strong><br>
@@ -793,8 +798,16 @@ function renderMap(list) {
     `);
     marker.addTo(leafletMarkersLayer);
   });
-  if (withCoords.length) {
-    leafletMap.fitBounds(withCoords.map(a => [a.lat, a.lon]), { padding: [30, 30], maxZoom: 14 });
+  if (withCoords.length === 1) {
+    // Un seul point : fitBounds sur un point unique zoomerait au maximum
+    // (zone quasi nulle), donnant l'impression très rapprochée observée.
+    // On centre plutôt avec un zoom raisonnable, cohérent avec l'échelle
+    // régionale de la zone d'incendie.
+    leafletMap.setView([withCoords[0].lat, withCoords[0].lon], 12);
+  } else if (withCoords.length > 1) {
+    leafletMap.fitBounds(withCoords.map(a => [a.lat, a.lon]), { padding: [40, 40], maxZoom: 12 });
+  } else {
+    leafletMap.setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
   }
 }
 
@@ -961,7 +974,14 @@ async function fetchCommuneSuggestions(q) {
   communeAbort?.abort();
   communeAbort = new AbortController();
   try {
-    const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&type=municipality&limit=6`, { signal: communeAbort.signal });
+    // Pas de filtre "type=municipality" : ce filtre renvoyait un seul point
+    // (le centre administratif) par ville, quel que soit le code postal
+    // recherché — toutes les annonces d'une grande ville comme Bordeaux se
+    // retrouvaient donc au même endroit sur la carte. Sans ce filtre, l'API
+    // renvoie aussi des résultats de niveau quartier/rue/code postal,
+    // beaucoup plus précis. Pour rester utilisable même en tapant juste un
+    // nom de ville, on demande un peu plus de résultats (10 au lieu de 6).
+    const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=10`, { signal: communeAbort.signal });
     if (!res.ok) throw new Error('bad response');
     const data = await res.json();
     const features = data.features || [];
@@ -1046,9 +1066,12 @@ modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop)
 
 function validatePhone(raw) {
   const cleaned = (raw || '').trim().replace(/[\s.\-()]/g, '');
-  if (/^\+33[1-9]\d{8}$/.test(cleaned)) return true; // +33 suivi de 9 chiffres (sans le 0 initial)
+  if (/^\+33[1-9]\d{8}$/.test(cleaned)) return true; // +33 suivi de 9 chiffres (sans le 0 initial) = 10 chiffres au total
   const digitsOnly = cleaned.replace(/^\+/, '').replace(/\D/g, '');
-  return digitsOnly.length >= 10;
+  // Exactement 10 chiffres (format français standard 0X XX XX XX XX) —
+  // pas "au moins 10" : un numéro à 11 chiffres ou plus est bien invalide,
+  // pas juste "un peu long".
+  return digitsOnly.length === 10;
 }
 
 const telInput = el('f-tel');

@@ -271,13 +271,13 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="relative">
           <label for="f-commune-input" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Ville</label>
-          <input id="f-commune-input" type="text" required autocomplete="off" placeholder="Tape une ville : Bordeaux, Mérignac, Biscarrosse…"
+          <input id="f-commune-input" type="text" required autocomplete="off" placeholder="Ville + code postal si possible : Bordeaux 33300, Biscarrosse…"
             class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
           <input type="hidden" id="f-commune">
           <input type="hidden" id="f-lat">
           <input type="hidden" id="f-lon">
           <ul id="f-commune-suggestions" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-sand rounded-xl shadow-lg max-h-56 overflow-y-auto"></ul>
-          <p class="text-xs text-gray-400 mt-1">Suggestions officielles (Base Adresse Nationale). Pas d'internet ? Tape simplement le nom, ça marche aussi.</p>
+          <p class="text-xs text-gray-400 mt-1">Suggestions officielles (Base Adresse Nationale). Pour une grande ville, précise le code postal ou le quartier pour une position plus juste sur la carte. Pas d'internet ? Tape simplement le nom, ça marche aussi.</p>
         </div>
         <div>
           <label for="f-quartier" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Quartier / repère</label>
@@ -341,7 +341,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
