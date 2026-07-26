@@ -7,13 +7,13 @@
    Pour que tout le monde voie les mêmes annonces en temps réel, il faut
    connecter un projet Firebase gratuit (5 minutes, aucune carte bancaire) :
 
-   ⚠️ SI TU AS DÉJÀ CONFIGURÉ FIREBASE AUPARAVANT : la fonctionnalité de
-   statut (ouvert / en pause / pourvu) nécessite une mise à jour des
-   règles de sécurité (étape 4 ci-dessous a changé). Retourne dans
-   Firestore → onglet "Règles" et republie la version ci-dessous, sinon
-   les changements de statut resteront uniquement locaux (pas de blocage,
-   juste pas de synchronisation entre visiteurs pour cette fonctionnalité
-   précise).
+   ⚠️ SI TU AS DÉJÀ CONFIGURÉ FIREBASE AUPARAVANT : plusieurs mises à jour
+   ont changé les règles nécessaires depuis ta première configuration —
+   statut des annonces (ouvert/pause/pourvu), et maintenant les likes du
+   mur de soutien. Retourne dans Firestore → onglet "Règles" et republie
+   la version complète ci-dessous (les deux collections, "annonces" ET
+   "soutien"), sinon ces fonctionnalités resteront locales uniquement
+   (pas de blocage, juste pas de synchronisation entre visiteurs).
 
    1. Va sur https://console.firebase.google.com
    2. "Ajouter un projet" → donne-lui un nom (ex: urgence-entraide-incendie) → crée-le
@@ -37,6 +37,16 @@
               // ou pourvue sans la supprimer) — tout le reste est immuable.
               allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statut'])
                             && request.resource.data.statut in ['ouvert', 'pause', 'pourvu'];
+            }
+            match /soutien/{id} {
+              allow read: if true;
+              allow create: if request.resource.data.keys().hasAll(['id','message','createdAt'])
+                            && request.resource.data.message.size() <= 200;
+              // Seul le champ "likes" peut être modifié après publication
+              // (pour le bouton like du mur de soutien) — le message et le
+              // pseudo, une fois postés, restent immuables.
+              allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+              allow delete: if true;
             }
           }
         }

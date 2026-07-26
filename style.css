@@ -117,34 +117,59 @@ header { position: sticky; top: 0; z-index: 100; }
 #map-container { width: 100%; z-index: 0; }
 .leaflet-popup-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; }
 
-/* ---- Bandeau défilant (mur de soutien) ---- */
-.ticker-wrap { overflow: hidden; white-space: nowrap; position: relative; }
-.ticker-track {
-  display: inline-flex; align-items: center; gap: 2rem;
-  padding: 12px 0; animation: ticker-scroll 40s linear infinite;
-  will-change: transform;
+/* ---- Bandeau de remerciement aux forces engagées ---- */
+.forces-banner {
+  background: linear-gradient(135deg, #111827, #1F2937);
+  position: relative;
+  overflow: hidden;
 }
-.ticker-wrap:hover .ticker-track { animation-play-state: paused; }
-@keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+.forces-banner-stripe {
+  position: absolute; top: 0; left: 0; right: 0; height: 6px;
+  background-image: repeating-linear-gradient(-45deg, #111827 0 20px, #EA580C 20px 40px);
 }
-.ticker-item {
-  color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap;
-  padding: 0 1rem; flex-shrink: 0;
+.forces-group-title {
+  color: #F59E0B; font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; margin: 14px 0 8px;
 }
-.ticker-item .ticker-pseudo { color: #FDBA74; font-weight: 700; }
+.forces-group-title:first-child { margin-top: 0; }
+.forces-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.forces-pill {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px; padding: 7px 13px; font-size: 14px; color: #fff;
+}
+.forces-banner-footer { border-top: 1px solid rgba(255,255,255,.1); }
 
-/* ---- Carte du mur de soutien ---- */
+/* ---- Mur de messages : grille maçonnée (colonnes CSS) ---- */
+.soutien-wall {
+  column-count: 1; column-gap: 14px;
+}
+@media (min-width: 600px) { .soutien-wall { column-count: 2; } }
+@media (min-width: 900px) { .soutien-wall { column-count: 3; } }
 .soutien-card {
   background: #fff; border: 1px solid #E5E7EB; border-radius: 16px;
-  padding: 12px 14px; font-size: 13.5px; line-height: 1.5; color: #111827;
+  padding: 18px; font-size: 15px; line-height: 1.55; color: #111827;
   box-shadow: 0 1px 2px rgba(17,24,39,.05);
+  break-inside: avoid; width: 100%; display: inline-block; margin-bottom: 14px;
 }
-.soutien-card .soutien-pseudo {
-  display: block; font-size: 11px; font-weight: 700;
-  color: #6B7280; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.03em;
+.soutien-quote {
+  font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: #EA580C;
+  line-height: 1; display: block; margin-bottom: 2px;
 }
+.soutien-footer { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.soutien-avatar {
+  width: 32px; height: 32px; border-radius: 999px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+}
+.soutien-who { flex: 1; min-width: 0; }
+.soutien-name { font-size: 14px; font-weight: 700; color: #111827; }
+.soutien-lieu { font-size: 12px; color: #9CA3AF; }
+.soutien-like {
+  min-height: 34px; border-radius: 999px; border: 1px solid #E5E7EB; background: #F9FAFB;
+  font-size: 13px; font-weight: 700; padding: 0 12px; display: inline-flex; align-items: center; gap: 5px;
+  color: #6B7280; flex-shrink: 0;
+}
+.soutien-like[data-liked="true"] { background: #FFF7ED; border-color: #FED7AA; color: #EA580C; }
 
 /* ---- Facettes : puces avec fond gris clair, jamais tronquées ---- */
 .facet-row {
@@ -198,7 +223,6 @@ header { position: sticky; top: 0; z-index: 100; }
 @media (prefers-reduced-motion: reduce) {
   .card-enter { animation: none; }
   .animate-pulse { animation: none; }
-  .ticker-track { animation: none; }
 }
 
 /* ---- Zone de sécurité iOS (encoche) ---- */

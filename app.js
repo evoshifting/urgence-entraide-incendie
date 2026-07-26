@@ -1086,20 +1086,71 @@ function tryImportFromURL() {
 }
 
 /* =====================================================================
-   MUR DE SOUTIEN — messages libres (pas de statut, pas de contact requis),
-   stockés dans une collection Firestore séparée ("soutien"). Même
-   stratégie de sondage périodique que pour les annonces (la seule
-   méthode dont on a la preuve qu'elle fonctionne dans cet environnement).
+   MUR DE SOUTIEN — bandeau de remerciement aux forces engagées (ordre
+   mélangé une fois par chargement) + mur de messages libres des
+   visiteurs, avec likes. Messages stockés dans une collection Firestore
+   séparée ("soutien"). Même stratégie de sondage périodique que pour les
+   annonces (la seule méthode dont on a la preuve qu'elle fonctionne dans
+   cet environnement).
 ===================================================================== */
 
-const FIXED_THANKS = [
-  '👏 Merci aux pompiers', '👏 Merci aux personnels médicaux et paramédicaux',
-  '👏 Merci aux responsables et personnels des EHPAD', '👏 Merci à la sécurité civile',
-  '👏 Merci aux forces de l\'ordre et corps d\'état mobilisés', '👏 Merci aux bénévoles',
-  '👏 Merci aux donateurs', '👏 Merci aux citoyens solidaires', '👏 Une pensée pour les victimes',
+const FORCES = {
+  "Sapeurs-pompiers & secours au sol": [
+    'Sapeurs-pompiers (SDIS 33)', 'Colonnes de renfort inter-départementales',
+    'Sapeurs-pompiers volontaires', 'SAMU / SMUR', 'Protection civile', 'Croix-Rouge française',
+  ],
+  "Soignants & professionnels de santé": [
+    'Hôpitaux & CHU', 'Cliniques', 'Infirmiers & infirmières', 'Aides-soignants', 'Ambulanciers',
+    'EHPAD & personnels', 'Médecins & urgentistes', 'Paramédicaux', 'Pharmaciens',
+    'Psychologues & cellules de soutien',
+  ],
+  "Moyens aériens": [
+    'Canadair', 'Dash 8', 'Hélicoptères bombardiers d\'eau', 'Pilotes de la Sécurité civile',
+    'Avions de reconnaissance',
+  ],
+  "Forces de l'État & militaires": [
+    'Sécurité civile', 'UIISC (ForMiSC)', 'Gendarmerie nationale', 'Police nationale & municipale',
+    'Préfecture de la Gironde', 'Armée & réservistes',
+  ],
+  "Forêt, réseaux & environnement": [
+    'Office national des forêts (ONF)', 'DFCI Aquitaine', 'ENEDIS & techniciens réseaux',
+    'Agriculteurs (citernes, tracteurs)', 'Vétérinaires & secours animaliers',
+  ],
+  "Solidarité citoyenne": [
+    'Bénévoles & réserves communales', 'Associations agréées de sécurité civile',
+    'Communes & mairies', 'Restaurateurs & commerçants', 'Donateurs & don du sang (EFS)',
+    'Hébergeurs solidaires',
+  ],
+};
+
+const AVATAR_COLORS = [
+  { bg: '#FFF7ED', fg: '#EA580C' }, { bg: '#ECFDF5', fg: '#059669' },
+  { bg: '#EEF2FF', fg: '#4338CA' }, { bg: '#FEF2F2', fg: '#DC2626' },
 ];
 
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Mélange une seule fois par chargement de page (pas à chaque render) :
+// aucune catégorie ni aucun organisme ne doit sembler "en tête" ou
+// prioritaire par rapport aux autres.
+const SHUFFLED_FORCES = shuffle(Object.entries(FORCES)).map(([title, items]) => [title, shuffle(items)]);
+
+function renderForcesBanner() {
+  el('forces-groups').innerHTML = SHUFFLED_FORCES.map(([title, items]) => `
+    <div class="forces-group-title">${escapeHTML(title)}</div>
+    <div class="forces-pills">${items.map(i => `<span class="forces-pill">${escapeHTML(i)}</span>`).join('')}</div>
+  `).join('');
+}
+
 const SOUTIEN_STORAGE_KEY = 'uei_soutien_v1';
+const SOUTIEN_LIKES_KEY = 'uei_soutien_likes_v1'; // ids likés depuis CET appareil, anti double-like
 let soutienCache = [];
 let soutienMigrated = false;
 
@@ -1109,6 +1160,13 @@ function loadSoutienLocal() {
 }
 function saveSoutienLocal(items) {
   try { localStorage.setItem(SOUTIEN_STORAGE_KEY, JSON.stringify(items)); } catch {}
+}
+function getLikedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(SOUTIEN_LIKES_KEY)) || []); }
+  catch { return new Set(); }
+}
+function saveLikedIds(set) {
+  try { localStorage.setItem(SOUTIEN_LIKES_KEY, JSON.stringify([...set])); } catch {}
 }
 
 async function pollSoutien(isFirst) {
@@ -1128,18 +1186,16 @@ async function pollSoutien(isFirst) {
         orphans.forEach(m => db.collection('soutien').doc(m.id).set(m, { merge: true }).catch(() => {}));
       }
     }
-    renderTicker();
     renderSoutienWall();
   } catch (err) {
     console.warn('[UEI] Échec sondage soutien', err);
   }
 }
 
-function addSoutienMessage(message, pseudo) {
-  const m = { id: makeId(), message, pseudo: pseudo || null, createdAt: Date.now() };
+function addSoutienMessage(message, pseudo, lieu) {
+  const m = { id: makeId(), message, pseudo: pseudo || null, lieu: lieu || null, likes: 0, createdAt: Date.now() };
   soutienCache = [m, ...soutienCache];
   saveSoutienLocal(soutienCache);
-  renderTicker();
   renderSoutienWall();
   if (db) {
     db.collection('soutien').doc(m.id).set(m).catch((err) => {
@@ -1149,46 +1205,59 @@ function addSoutienMessage(message, pseudo) {
   return m;
 }
 
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+function toggleLike(id) {
+  const liked = getLikedIds();
+  const isLiked = liked.has(id);
+  const delta = isLiked ? -1 : 1;
+  if (isLiked) liked.delete(id); else liked.add(id);
+  saveLikedIds(liked);
 
-function renderTicker() {
-  const liveItems = soutienCache.slice(0, 30).map(m =>
-    `<span class="ticker-item">💬 ${escapeHTML(m.message)} <span class="ticker-pseudo">— ${escapeHTML(m.pseudo || 'Anonyme')}</span></span>`
-  );
-  const fixedItems = FIXED_THANKS.map(t => `<span class="ticker-item">${t}</span>`);
-  // Mélange des deux listes (remerciements fixes + messages postés), en boucle
-  const merged = [];
-  const maxLen = Math.max(fixedItems.length, liveItems.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (fixedItems[i]) merged.push(fixedItems[i]);
-    if (liveItems[i]) merged.push(liveItems[i]);
+  soutienCache = soutienCache.map(m => m.id === id ? { ...m, likes: Math.max(0, (m.likes || 0) + delta) } : m);
+  saveSoutienLocal(soutienCache);
+  renderSoutienWall();
+
+  if (db) {
+    // Nécessite que les règles Firestore autorisent la mise à jour du champ
+    // "likes" (voir firebase-config.js). Incrément atomique côté serveur
+    // pour rester correct même si plusieurs visiteurs likent en même temps.
+    db.collection('soutien').doc(id).update({ likes: firebase.firestore.FieldValue.increment(delta) })
+      .catch((err) => console.warn('[UEI] Échec synchronisation du like (règles Firestore à mettre à jour ?)', err));
   }
-  if (!merged.length) return;
-  // Le contenu est dupliqué deux fois : l'animation CSS translate -50%
-  // crée ainsi une boucle parfaitement continue, sans saut visible.
-  tickerTrack.innerHTML = merged.join('') + merged.join('');
 }
 
 function renderSoutienWall() {
+  el('soutien-count').textContent = soutienCache.length ? `${soutienCache.length} message${soutienCache.length > 1 ? 's' : ''}` : '';
   if (!soutienCache.length) {
     soutienWall.innerHTML = '';
     soutienEmpty.classList.remove('hidden');
     return;
   }
   soutienEmpty.classList.add('hidden');
-  const shown = shuffle(soutienCache).slice(0, 24);
-  soutienWall.innerHTML = shown.map(m => `
-    <div class="soutien-card">
-      “${escapeHTML(m.message)}”
-      <span class="soutien-pseudo">${escapeHTML(m.pseudo || 'Anonyme')}</span>
-    </div>`).join('');
+  const liked = getLikedIds();
+  soutienWall.innerHTML = soutienCache.map((m, i) => {
+    const name = escapeHTML(m.pseudo || 'Anonyme');
+    const initial = (m.pseudo || 'A').trim().charAt(0).toUpperCase();
+    const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    const isLiked = liked.has(m.id);
+    const likeCount = m.likes || 0;
+    return `
+    <article class="soutien-card">
+      <span class="soutien-quote" aria-hidden="true">“</span>
+      <p>${escapeHTML(m.message)}</p>
+      <div class="soutien-footer">
+        <div class="soutien-avatar" style="background:${color.bg};color:${color.fg};">${escapeHTML(initial)}</div>
+        <div class="soutien-who">
+          <div class="soutien-name">${name}</div>
+          ${m.lieu ? `<div class="soutien-lieu">${escapeHTML(m.lieu)}</div>` : ''}
+        </div>
+        <button class="soutien-like" data-like="${escapeHTML(m.id)}" data-liked="${isLiked}">${isLiked ? '🧡' : '🤍'} ${likeCount}</button>
+      </div>
+    </article>`;
+  }).join('');
+
+  soutienWall.querySelectorAll('[data-like]').forEach(btn => {
+    btn.addEventListener('click', () => toggleLike(btn.getAttribute('data-like')));
+  });
 }
 
 const btnSoutien = el('btn-soutien');
@@ -1197,13 +1266,13 @@ const btnCloseSoutienModal = el('btn-close-soutien-modal');
 const soutienForm = el('soutien-form');
 const soutienMessageInput = el('soutien-message');
 const soutienPseudoInput = el('soutien-pseudo');
+const soutienLieuInput = el('soutien-lieu');
 const soutienCharCount = el('soutien-char-count');
 const soutienWall = el('soutien-wall');
 const soutienEmpty = el('soutien-empty');
-const tickerTrack = el('ticker-track');
 
-// Affiche déjà les remerciements fixes avant même toute connexion réseau
-renderTicker();
+// Affiche déjà le bandeau des forces engagées avant même toute connexion réseau
+renderForcesBanner();
 
 function openSoutienModal() {
   soutienForm.reset();
@@ -1222,10 +1291,11 @@ soutienForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const message = soutienMessageInput.value.trim();
   const pseudo = soutienPseudoInput.value.trim();
+  const lieu = soutienLieuInput.value.trim();
   if (!message) return;
-  addSoutienMessage(message.slice(0, 200), pseudo.slice(0, 30));
+  addSoutienMessage(message.slice(0, 200), pseudo.slice(0, 30), lieu.slice(0, 40));
   closeSoutienModal();
-  showToast('Merci pour ce message 💛');
+  showToast('Merci pour ce message 🧡');
 });
 
 /* =====================================================================
@@ -1251,7 +1321,6 @@ async function init() {
   renderFeed();               // affiche l'annonce importée le cas échéant
 
   soutienCache = loadSoutienLocal();
-  renderTicker();
   renderSoutienWall();
   if (db) {
     pollSoutien(true);
