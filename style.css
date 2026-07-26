@@ -1,10 +1,9 @@
 /* =====================================================================
-   URGENCE ENTRAIDE INCENDIE — direction artistique
-   Signature : bulletin citoyen / registre d'incident. Rayures de danger
-   comme motif de marque, cartes à tranche colorée façon dossier,
-   métadonnées en monospace façon tampon officiel, facettes avec
-   compteurs façon moteur de recherche. Polices système uniquement
-   (aucun webfont) pour rester rapide sur réseau dégradé.
+   URGENCE ENTRAIDE INCENDIE — direction artistique (révision du 27/07)
+   Refonte lisibilité : palette orange (#EA580C, demander/cherche) /
+   émeraude (#059669, proposer/propose) / gris neutre, une seule police
+   système sans-serif partout (plus de monospace), coins plus généreux,
+   cibles tactiles ≥44px, disposition 2 colonnes au-delà de 1024px.
 ===================================================================== */
 
 html {
@@ -12,16 +11,10 @@ html {
 }
 
 /* =====================================================================
-   FILET DE SÉCURITÉ — indépendant du CDN Tailwind (cdn.tailwindcss.com)
-   Le site s'appuie sur Tailwind chargé à l'exécution pour générer TOUTE
-   sa CSS, y compris l'utilitaire .hidden qui pilote l'affichage des
-   modales, bannières et pagination. Si ce script externe est lent,
-   bloqué (bloqueur de pub, pare-feu) ou temporairement indisponible —
-   plausible sur un réseau dégradé pendant une évacuation — ces règles,
-   servies localement avec la page, garantissent que le site reste
-   utilisable : masquage correct, modales en superposition, en-tête
-   fixe. Ce n'est pas un remplacement de Tailwind, juste une garantie
-   minimale de fonctionnement pour les mécanismes critiques.
+   FILET DE SÉCURITÉ — indépendant du CDN Tailwind
+   tailwind-built.css est en réalité un CSS statique précompilé (plus de
+   dépendance CDN du tout), mais ces règles restent en filet de sécurité
+   local pour les mécanismes critiques (affichage/masquage des modales).
 ===================================================================== */
 .hidden { display: none !important; }
 
@@ -29,97 +22,106 @@ html {
 #share-modal-backdrop:not(.hidden) {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(34,38,42,0.6);
+  background: rgba(17,24,39,0.6);
 }
 #toast:not(.hidden) {
   position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
-  z-index: 1000; background: #22262A; color: #EEEDE6;
-  padding: 0.6rem 1rem; border-radius: 6px;
+  z-index: 1000; background: #111827; color: #fff;
+  padding: 0.6rem 1rem; border-radius: 12px;
 }
 #f-commune-suggestions:not(.hidden) {
   position: absolute; z-index: 500; left: 0; right: 0;
-  background: #fff; border: 1px solid #C9B995; border-radius: 6px;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
 }
 header { position: sticky; top: 0; z-index: 100; }
 
-/* ---- Motif signature : rayures de danger ---- */
+/* ---- Motif signature : rayures de danger (bandeau d'urgence) ---- */
 .hazard-stripe {
   background-image: repeating-linear-gradient(
     -45deg,
-    #D6451B 0px, #D6451B 10px,
-    #22262A 10px, #22262A 20px
+    #EA580C 0px, #EA580C 8px,
+    #111827 8px, #111827 16px
   );
 }
 
-/* ---- Filtres / facettes actives ---- */
+/* ---- Logo : tuile orange + flamme ---- */
+.logo-tile {
+  background: #EA580C;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.logo-tile svg { width: 60%; height: 60%; color: #fff; }
+
+/* ---- Filtres / facettes : puces en ligne, jamais tronquées ---- */
 .filter-btn {
   background: #fff;
-  border-color: #C9B995;
-  color: #22262A99;
+  border: 1px solid #E5E7EB;
+  color: #374151;
 }
 .filter-btn[data-active="true"] {
-  background: #22262A;
-  border-color: #22262A;
-  color: #EEEDE6;
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
 }
 .facet-count {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  background: rgba(34,38,42,0.08);
-  border-radius: 4px;
-  padding: 1px 5px;
-  line-height: 1.4;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(17,24,39,0.08);
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.5;
 }
 .filter-btn[data-active="true"] .facet-count {
-  background: rgba(238,237,230,0.2);
+  background: rgba(255,255,255,0.2);
 }
 
 /* ---- Radio custom "type" dans le formulaire ---- */
 .type-radio-label {
-  border-color: #C9B995;
-  color: #22262A99;
+  border-color: #E5E7EB;
+  color: #374151;
   background: #fff;
 }
 .type-radio-label:has(input:checked) {
-  border-color: #22262A;
-  background: #22262A;
-  color: #EEEDE6;
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
 }
 
 /* ---- Bascule Fil / Carte ---- */
 .view-toggle-btn {
   background: #fff;
-  color: #22262A99;
+  color: #374151;
 }
 .view-toggle-btn[data-active="true"] {
-  background: #22262A;
-  color: #EEEDE6;
+  background: #111827;
+  color: #fff;
 }
 
 /* ---- Badges de statut ---- */
-.statut-badge--ouvert  { background: rgba(30,75,60,0.12); color: #1E4B3C; }
-.statut-badge--pause   { background: rgba(226,166,59,0.18); color: #C48A25; }
-.statut-badge--pourvu  { background: rgba(34,38,42,0.10); color: #22262A99; }
-.card-annonce--inactive { opacity: 0.55; }
+.statut-badge--ouvert  { background: #ECFDF5; color: #059669; }
+.statut-badge--pause   { background: #FBEED3; color: #C48A25; }
+.statut-badge--pourvu  { background: #F3F4F6; color: #6B7280; }
+.card-annonce--inactive { opacity: 0.6; }
 
-/* ---- Boutons de changement de statut (sur ses propres annonces) ---- */
+/* ---- Boutons de changement de statut ---- */
 .statut-btn {
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
-  padding: 3px 7px; border-radius: 4px; border: 1px solid #C9B995; background: #fff; color: #22262A99;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 5px 10px; border-radius: 999px; border: 1px solid #E5E7EB; background: #fff; color: #374151;
+  min-height: 28px;
 }
 .statut-btn[data-active="true"] {
-  background: #22262A; border-color: #22262A; color: #EEEDE6;
+  background: #111827; border-color: #111827; color: #fff;
 }
 
-/* ---- Carte Leaflet : s'assure qu'elle prend bien la hauteur donnée ---- */
+/* ---- Carte Leaflet ---- */
 #map-container { width: 100%; z-index: 0; }
-.leaflet-popup-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12.5px; }
+.leaflet-popup-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; }
 
 /* ---- Bandeau défilant (mur de soutien) ---- */
 .ticker-wrap { overflow: hidden; white-space: nowrap; position: relative; }
 .ticker-track {
   display: inline-flex; align-items: center; gap: 2rem;
-  padding: 10px 0; animation: ticker-scroll 40s linear infinite;
+  padding: 12px 0; animation: ticker-scroll 40s linear infinite;
   will-change: transform;
 }
 .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
@@ -128,55 +130,60 @@ header { position: sticky; top: 0; z-index: 100; }
   to { transform: translateX(-50%); }
 }
 .ticker-item {
-  color: #EEEDE6; font-size: 13px; font-weight: 600; white-space: nowrap;
+  color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap;
   padding: 0 1rem; flex-shrink: 0;
 }
-.ticker-item .ticker-pseudo { color: #E2A63B; font-weight: 700; }
+.ticker-item .ticker-pseudo { color: #FDBA74; font-weight: 700; }
 
 /* ---- Carte du mur de soutien ---- */
 .soutien-card {
-  background: #fff; border: 1px solid #C9B99580; border-radius: 8px;
-  padding: 10px 12px; font-size: 12.5px; line-height: 1.4; color: #22262Ae6;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 16px;
+  padding: 12px 14px; font-size: 13.5px; line-height: 1.5; color: #111827;
+  box-shadow: 0 1px 2px rgba(17,24,39,.05);
 }
 .soutien-card .soutien-pseudo {
-  display: block; font-family: ui-monospace, monospace; font-size: 10px;
-  color: #22262A66; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.04em;
+  display: block; font-size: 11px; font-weight: 700;
+  color: #6B7280; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.03em;
 }
 
-/* ---- Panneau de filtres (menu latéral) ---- */
-#filters-drawer {
-  transform: translateX(-100%);
-  transition: transform 0.25s ease;
-}
-#filters-drawer.drawer-open { transform: translateX(0); }
-
-/* ---- Lignes de facette verticales (dans le panneau) ---- */
+/* ---- Facettes : puces avec fond gris clair, jamais tronquées ---- */
 .facet-row {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; text-align: left; padding: 8px 10px; border-radius: 6px;
-  font-size: 13px; font-weight: 600; color: #22262Ab3;
-  background: transparent; border: 1px solid transparent;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 14px; border-radius: 999px; min-height: 40px;
+  font-size: 13.5px; font-weight: 600; color: #374151;
+  background: #F3F4F6; border: 1px solid transparent;
 }
-.facet-row:hover { background: #E5E1D3; }
+.facet-row:hover { background: #E5E7EB; }
 .facet-row[data-active="true"] {
-  background: #22262A; color: #EEEDE6; border-color: #22262A;
+  background: #111827; color: #fff; border-color: #111827;
 }
 .facet-row .facet-count {
-  font-family: ui-monospace, monospace; font-size: 11px; opacity: 0.6;
+  font-size: 11px; opacity: 0.75;
 }
 
 /* ---- Suggestions d'adresse (autocomplétion) ---- */
 #f-commune-suggestions li:hover {
-  background: #EEEDE6;
+  background: #F3F4F6;
 }
 
-/* ---- Carte annonce : tranche colorée façon dossier ---- */
+/* ---- Carte annonce : coins généreux + tranche colorée ---- */
 .card-annonce {
   border-left-width: 4px;
   border-left-style: solid;
+  border-radius: 16px;
 }
-.card-annonce--besoin { border-left-color: #D6451B; }
-.card-annonce--offre  { border-left-color: #1E4B3C; }
+.card-annonce--besoin { border-left-color: #EA580C; }
+.card-annonce--offre  { border-left-color: #059669; }
+
+/* ---- Badges type (CHERCHE / PROPOSE) : fond clair + texte coloré ---- */
+.badge-cherche { background: #FFF7ED; color: #EA580C; border: 1px solid #FED7AA; }
+.badge-propose { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+
+/* ---- Case à cocher : zone tactile agrandie (≥44px) ---- */
+.tap-target-checkbox {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 4px 2px;
+}
+.tap-target-checkbox input[type="checkbox"] { width: 20px; height: 20px; }
 
 /* ---- Apparition légère des cartes ---- */
 .card-enter {
@@ -191,6 +198,7 @@ header { position: sticky; top: 0; z-index: 100; }
 @media (prefers-reduced-motion: reduce) {
   .card-enter { animation: none; }
   .animate-pulse { animation: none; }
+  .ticker-track { animation: none; }
 }
 
 /* ---- Zone de sécurité iOS (encoche) ---- */

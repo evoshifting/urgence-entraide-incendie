@@ -354,38 +354,6 @@ const btnGeoloc = el('btn-geoloc');
 const chkHideResolved = el('chk-hide-resolved');
 
 /* =====================================================================
-   PANNEAU DE FILTRES (menu latéral façon site marchand)
-===================================================================== */
-
-const btnOpenFilters = el('btn-open-filters');
-const btnCloseFilters = el('btn-close-filters');
-const filtersDrawer = el('filters-drawer');
-const filtersBackdrop = el('filters-backdrop');
-const btnResetFilters = el('btn-reset-filters');
-const filtersActiveCount = el('filters-active-count');
-
-function openFiltersDrawer() {
-  filtersDrawer.classList.remove('hidden');
-  filtersBackdrop.classList.remove('hidden');
-  requestAnimationFrame(() => filtersDrawer.classList.add('drawer-open'));
-}
-function closeFiltersDrawer() {
-  filtersDrawer.classList.remove('drawer-open');
-  setTimeout(() => {
-    filtersDrawer.classList.add('hidden');
-    filtersBackdrop.classList.add('hidden');
-  }, 250);
-}
-btnOpenFilters.addEventListener('click', openFiltersDrawer);
-btnCloseFilters.addEventListener('click', closeFiltersDrawer);
-filtersBackdrop.addEventListener('click', closeFiltersDrawer);
-btnResetFilters.addEventListener('click', () => {
-  filterType = 'all'; filterCat = 'all'; filterZone = 'all';
-  currentPage = 1;
-  renderFeed();
-});
-
-/* =====================================================================
    IDENTITÉ (mémorisée pour préremplir le formulaire, jamais bloquante)
 ===================================================================== */
 
@@ -561,12 +529,6 @@ function facetRow(label, count, active, attrs) {
   </button>`;
 }
 
-function updateFiltersActiveBadge() {
-  const n = (filterType !== 'all' ? 1 : 0) + (filterCat !== 'all' ? 1 : 0) + (filterZone !== 'all' ? 1 : 0);
-  if (n > 0) { filtersActiveCount.textContent = n; filtersActiveCount.classList.remove('hidden'); }
-  else { filtersActiveCount.classList.add('hidden'); }
-}
-
 function renderFacets(all, searchFiltered) {
   // -- Type --
   const byType = filteredExcept(searchFiltered, 'type');
@@ -575,7 +537,7 @@ function renderFacets(all, searchFiltered) {
   facetType.innerHTML =
     facetRow('Tout', byType.length, filterType === 'all', `data-filter-type="all"`) +
     facetRow('🆘 Cherche', cBesoin, filterType === 'besoin', `data-filter-type="besoin"`) +
-    facetRow('🏡 Propose', cOffre, filterType === 'offre', `data-filter-type="offre"`);
+    facetRow('🤝 Propose', cOffre, filterType === 'offre', `data-filter-type="offre"`);
 
   // -- Catégorie --
   const byCat = filteredExcept(searchFiltered, 'cat');
@@ -601,8 +563,6 @@ function renderFacets(all, searchFiltered) {
   facetZone.querySelectorAll('[data-filter-zone]').forEach(btn => {
     btn.addEventListener('click', () => { filterZone = btn.getAttribute('data-filter-zone'); currentPage = 1; renderFeed(); });
   });
-
-  updateFiltersActiveBadge();
 }
 
 /* =====================================================================
@@ -614,13 +574,13 @@ function renderStats(all) {
   const offres = actives.filter(a => a.type === 'offre').length;
   const besoins = actives.filter(a => a.type === 'besoin').length;
   statsBar.innerHTML = `
-    <div class="bg-solid-light rounded-md py-2.5">
+    <div class="bg-solid-light rounded-2xl py-3">
       <p class="text-2xl font-black text-solid-dark leading-none">${offres}</p>
-      <p class="text-[10px] font-mono uppercase tracking-wide text-solid-dark/80 mt-1">offre${offres > 1 ? 's' : ''} disponible${offres > 1 ? 's' : ''}</p>
+      <p class="text-xs font-bold uppercase tracking-wide text-emerald-700/80 mt-1">offre${offres > 1 ? 's' : ''} disponible${offres > 1 ? 's' : ''}</p>
     </div>
-    <div class="bg-urgent-light rounded-md py-2.5">
+    <div class="bg-urgent-light rounded-2xl py-3">
       <p class="text-2xl font-black text-urgent-dark leading-none">${besoins}</p>
-      <p class="text-[10px] font-mono uppercase tracking-wide text-urgent-dark/80 mt-1">besoin${besoins > 1 ? 's' : ''} en attente</p>
+      <p class="text-xs font-bold uppercase tracking-wide text-orange-700/80 mt-1">besoin${besoins > 1 ? 's' : ''} en attente</p>
     </div>`;
 }
 
@@ -631,8 +591,8 @@ function renderStats(all) {
 function cardHTML(a) {
   const cat = CATEGORIES[a.categorie] || { label: a.categorie, icon: '❔' };
   const isBesoin = a.type === 'besoin';
-  const badgeClass = isBesoin ? 'bg-urgent text-white' : 'bg-solid text-white';
-  const badgeLabel = isBesoin ? '🆘 Cherche' : '🏡 Propose';
+  const badgeClass = isBesoin ? 'badge-cherche' : 'badge-propose';
+  const badgeLabel = isBesoin ? '🆘 Cherche' : '🤝 Propose';
   const statutKey = a.statut || 'ouvert';
   const statut = STATUTS[statutKey] || STATUTS.ouvert;
   const spineClass = isBesoin ? 'card-annonce--besoin' : 'card-annonce--offre';
@@ -640,42 +600,42 @@ function cardHTML(a) {
   const mine = getMineIds().has(a.id);
   const telClean = cleanTel(a.contactTel);
   const distLabel = (userPos && hasCoords(a))
-    ? `<span class="font-mono text-[10px] text-ink/40 shrink-0">${distanceKm(userPos.lat, userPos.lon, a.lat, a.lon).toFixed(1)} km</span>`
+    ? `<span class="font-semibold text-xs text-gray-500 shrink-0">${distanceKm(userPos.lat, userPos.lon, a.lat, a.lon).toFixed(1)} km</span>`
     : '';
 
   const statutButtons = mine ? `
-    <div class="flex items-center gap-1 mt-2 pt-2 border-t border-sand/40">
-      <span class="text-[10px] font-mono uppercase text-ink/40 mr-1">Statut :</span>
+    <div class="flex items-center flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-200">
+      <span class="text-xs font-bold uppercase text-gray-500 mr-1">Statut :</span>
       ${Object.entries(STATUTS).map(([key, s]) =>
         `<button data-set-statut="${a.id}" data-statut-value="${key}" class="statut-btn" data-active="${statutKey === key}">${s.icon} ${s.label}</button>`
       ).join('')}
     </div>` : '';
 
   return `
-  <article class="card-enter card-annonce ${spineClass} ${inactiveClass} bg-white border border-sand/50 rounded-md p-4 shadow-sm">
-    <div class="flex items-start justify-between gap-2 mb-2">
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${badgeClass}">${badgeLabel}</span>
-        <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-warm-100 text-ink/60">${cat.icon} ${cat.label}</span>
-        <span class="text-[11px] font-semibold px-2 py-0.5 rounded statut-badge--${statutKey}">${statut.icon} ${statut.label}</span>
+  <article class="card-enter card-annonce ${spineClass} ${inactiveClass} bg-white border border-gray-200 p-4 shadow-sm">
+    <div class="flex items-start justify-between gap-2 mb-2.5">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-xs font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full ${badgeClass}">${badgeLabel}</span>
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">${cat.icon} ${cat.label}</span>
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-full statut-badge--${statutKey}">${statut.icon} ${statut.label}</span>
       </div>
       <div class="flex flex-col items-end gap-1 shrink-0">
-        <span class="font-mono text-[10px] text-ink/40">${timeAgo(a.createdAt)}</span>
+        <span class="font-semibold text-xs text-gray-500">${timeAgo(a.createdAt)}</span>
         ${distLabel}
       </div>
     </div>
 
-    <p class="text-sm font-bold text-ink mb-1">📍 ${escapeHTML(lieuComplet(a))}</p>
-    <p class="text-sm text-ink/80 mb-3 leading-snug">${escapeHTML(a.description)}</p>
+    <p class="text-base font-bold text-gray-900 mb-1">📍 ${escapeHTML(lieuComplet(a))}</p>
+    <p class="text-[15px] text-gray-700 mb-3 leading-relaxed">${escapeHTML(a.description)}</p>
 
-    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-sand/50">
-      <p class="font-mono text-[11px] text-ink/50 truncate">${escapeHTML(a.contactPrenom)}</p>
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-200">
+      <p class="font-semibold text-xs text-gray-500 truncate">${escapeHTML(a.contactPrenom)}</p>
       <div class="flex items-center gap-2 shrink-0 flex-wrap">
-        <button data-copy="${escapeHTML(a.contactTel)}" class="btn-copy text-xs font-bold bg-warm-100 hover:bg-sand/50 text-ink/70 rounded px-3 py-1.5">Copier n°</button>
-        <a href="tel:${telClean}" class="text-xs font-bold bg-urgent hover:bg-urgent-dark text-white rounded px-3 py-1.5">📞 Appeler</a>
-        <a href="${whatsappLink(a)}" target="_blank" rel="noopener" class="text-xs font-bold bg-wa hover:bg-wa-dark text-white rounded px-3 py-1.5">📲 Partager</a>
-        <button data-pdf="${a.id}" class="btn-pdf text-xs font-bold bg-warm-100 hover:bg-sand/50 text-ink/70 rounded px-3 py-1.5" aria-label="Générer une affiche PDF">🖨️ Affiche</button>
-        ${mine ? `<button data-delete="${a.id}" class="btn-delete text-xs font-semibold text-ink/30 hover:text-urgent px-1" aria-label="Supprimer mon annonce">🗑️</button>` : ''}
+        <button data-copy="${escapeHTML(a.contactTel)}" class="btn-copy min-h-[44px] text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl px-3.5">Copier n°</button>
+        <a href="tel:${telClean}" class="min-h-[44px] inline-flex items-center text-xs font-bold bg-urgent hover:bg-urgent-dark text-white rounded-xl px-3.5">📞 Appeler</a>
+        <a href="${whatsappLink(a)}" target="_blank" rel="noopener" class="min-h-[44px] inline-flex items-center text-xs font-bold bg-wa hover:bg-wa-dark text-white rounded-xl px-3.5">📲 Partager</a>
+        <button data-pdf="${a.id}" class="btn-pdf min-h-[44px] text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl px-3.5" aria-label="Générer une affiche PDF">🖨️ Affiche</button>
+        ${mine ? `<button data-delete="${a.id}" class="btn-delete min-h-[44px] min-w-[44px] text-sm font-semibold text-gray-400 hover:text-urgent" aria-label="Supprimer mon annonce">🗑️</button>` : ''}
       </div>
     </div>
     ${statutButtons}
@@ -728,9 +688,9 @@ function renderFeed() {
   if (totalPages > 1) {
     pagination.classList.remove('hidden');
     pagination.innerHTML = `
-      <button id="page-prev" ${currentPage === 1 ? 'disabled' : ''} class="px-4 py-2 rounded-md border border-sand text-xs font-bold uppercase tracking-wide disabled:opacity-30 bg-white">← Précédent</button>
-      <span class="font-mono text-xs text-ink/50">Page ${currentPage} / ${totalPages}</span>
-      <button id="page-next" ${currentPage === totalPages ? 'disabled' : ''} class="px-4 py-2 rounded-md border border-sand text-xs font-bold uppercase tracking-wide disabled:opacity-30 bg-white">Suivant →</button>`;
+      <button id="page-prev" ${currentPage === 1 ? 'disabled' : ''} class="min-h-[44px] px-4 py-2 rounded-xl border border-sand text-xs font-bold uppercase tracking-wide disabled:opacity-30 bg-white">← Précédent</button>
+      <span class="font-semibold text-xs text-gray-500">Page ${currentPage} / ${totalPages}</span>
+      <button id="page-next" ${currentPage === totalPages ? 'disabled' : ''} class="min-h-[44px] px-4 py-2 rounded-xl border border-sand text-xs font-bold uppercase tracking-wide disabled:opacity-30 bg-white">Suivant →</button>`;
     el('page-prev')?.addEventListener('click', () => { currentPage--; renderFeed(); window.scrollTo({ top: feed.offsetTop - 90, behavior: 'smooth' }); });
     el('page-next')?.addEventListener('click', () => { currentPage++; renderFeed(); window.scrollTo({ top: feed.offsetTop - 90, behavior: 'smooth' }); });
   } else {
@@ -826,7 +786,7 @@ function renderMap(list) {
       radius: 9, color: '#22262A', weight: 1.5, fillColor: color, fillOpacity: 0.9,
     });
     marker.bindPopup(`
-      <strong>${a.type === 'besoin' ? '🆘 Cherche' : '🏡 Propose'} — ${escapeHTML(cat.label)}</strong><br>
+      <strong>${a.type === 'besoin' ? '🆘 Cherche' : '🤝 Propose'} — ${escapeHTML(cat.label)}</strong><br>
       📍 ${escapeHTML(lieuComplet(a))}<br>
       ${escapeHTML(a.description)}<br>
       <a href="tel:${cleanTel(a.contactTel)}">📞 ${escapeHTML(a.contactTel)}</a>
@@ -1011,7 +971,7 @@ async function fetchCommuneSuggestions(q) {
       const postcode = f.properties.postcode || '';
       const [lon, lat] = f.geometry?.coordinates || [];
       return `<li data-value="${escapeHTML(label)}" data-lat="${lat ?? ''}" data-lon="${lon ?? ''}" class="px-3 py-2.5 hover:bg-warm-100 cursor-pointer text-sm border-b border-sand/30 last:border-0 flex items-center justify-between gap-2">
-        <span>${escapeHTML(label)}</span><span class="font-mono text-[10px] text-ink/40 shrink-0">${escapeHTML(postcode)}</span>
+        <span>${escapeHTML(label)}</span><span class="font-semibold text-xs text-gray-500 shrink-0">${escapeHTML(postcode)}</span>
       </li>`;
     }).join('');
     communeSuggestions.classList.remove('hidden');

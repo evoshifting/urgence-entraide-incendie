@@ -8,7 +8,7 @@
   // Chargé en tout premier pour capturer les logs des scripts suivants.
   if (new URLSearchParams(location.search).get('debug') === '1') {
     const box = document.createElement('div');
-    box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:45vh;overflow-y:auto;background:#111;color:#0f0;font:10px/1.4 monospace;padding:8px;z-index:999999;white-space:pre-wrap;border-top:2px solid #D6451B;';
+    box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:45vh;overflow-y:auto;background:#111;color:#0f0;font:10px/1.4 monospace;padding:8px;z-index:999999;white-space:pre-wrap;border-top:2px solid #EA580C;';
     document.addEventListener('DOMContentLoaded', () => document.body.appendChild(box));
     const log = (type, args) => {
       const line = document.createElement('div');
@@ -30,12 +30,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Urgence Entraide Incendie — Biscarrosse / Cap-Ferret</title>
 <meta name="description" content="Mise en relation d'urgence entre victimes des incendies et personnes solidaires : logement, chambres, matériel. Partage instantané via WhatsApp.">
-<meta name="theme-color" content="#22262A">
+<meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2322262A%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23D6451B%22>▲</text></svg>">
-<link rel="stylesheet" href="tailwind-built.css?v=2">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%23EA580C%22/><path fill=%22white%22 transform=%22translate(3,3) scale(0.75)%22 d=%22M12 2c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1 0-1-.3-2 2 2 3.3 4.6 3.3 7.5A8 8 0 1 1 5 13.5C5 10 7.5 7 9 5c1.2-1.6 3-2 3-3Z%22/></svg>">
+<link rel="stylesheet" href="tailwind-built.css?v=3">
+<link rel="stylesheet" href="style.css?v=3">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
   // on préfère avertir clairement plutôt que laisser un site silencieusement
@@ -44,7 +44,7 @@
     if (document.getElementById('fatal-error-banner')) return;
     var b = document.createElement('div');
     b.id = 'fatal-error-banner';
-    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#B33814;color:#fff;padding:10px 16px;font:600 13px system-ui,sans-serif;text-align:center;';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#C2410C;color:#fff;padding:10px 16px;font:600 13px system-ui,sans-serif;text-align:center;';
     b.textContent = "⚠️ Un problème technique empêche le site de fonctionner normalement. Essaie de recharger la page (Ctrl/Cmd + Maj + R). Si ça persiste, appelle directement le 18 ou le 112.";
     document.body.prepend(b);
   });
@@ -52,17 +52,17 @@
 </head>
 <body class="bg-warm-50 text-ink font-sans antialiased min-h-screen flex flex-col">
 
-<!-- Bandeau sécurité officielle -->
-<div class="bg-ink text-warm-50 text-sm px-4 py-2 flex items-center justify-center gap-2 text-center leading-snug">
-  <span aria-hidden="true" class="text-urgent">▲</span>
-  <span><strong>Danger immédiat ?</strong> Appelez le <a href="tel:18" class="underline decoration-urgent decoration-2 font-bold">18</a> (pompiers) ou le <a href="tel:112" class="underline decoration-urgent decoration-2 font-bold">112</a>. Consignes officielles :
-  <a href="https://www.gironde.gouv.fr" target="_blank" rel="noopener" class="underline decoration-urgent decoration-2">gironde.gouv.fr</a></span>
+<!-- Zone globale sticky : bandeau danger (seule chose fixe en haut, à toutes largeurs) -->
+<div class="sticky top-0 z-30">
+  <div class="bg-ink text-white text-sm px-4 py-2.5 flex items-center justify-center gap-2 text-center leading-snug">
+    <span aria-hidden="true" class="text-urgent">▲</span>
+    <span><strong>Danger immédiat ?</strong> Appelez le <a href="tel:18" class="underline decoration-urgent decoration-2 font-bold">18</a> (pompiers) ou le <a href="tel:112" class="underline decoration-urgent decoration-2 font-bold">112</a>. Consignes officielles :
+    <a href="https://www.gironde.gouv.fr" target="_blank" rel="noopener" class="underline decoration-urgent decoration-2">gironde.gouv.fr</a></span>
+  </div>
+  <div class="hazard-stripe h-1.5" aria-hidden="true"></div>
 </div>
-<div class="hazard-stripe h-1.5" aria-hidden="true"></div>
 
-<!-- Alerte navigateur intégré (WhatsApp, Instagram, etc.) : Firestore ne
-     fonctionne pas fiablement dans ces navigateurs bridés — masquée par
-     défaut, affichée par JS si détectée (voir app.js: checkInAppBrowser). -->
+<!-- Alerte navigateur intégré (WhatsApp, Instagram, etc.) -->
 <div id="inapp-banner" class="hidden bg-signal text-ink text-sm px-4 py-3 flex items-start gap-2 leading-snug">
   <span aria-hidden="true">⚠️</span>
   <span class="flex-1">
@@ -72,159 +72,155 @@
   <button id="btn-close-inapp-banner" class="text-ink/60 hover:text-ink text-lg leading-none px-1" aria-label="Fermer">×</button>
 </div>
 
-<!-- Header : masthead + CTA permanents -->
-<header class="sticky top-0 z-30 bg-warm-50/95 backdrop-blur border-b border-sand/60">
-  <div class="max-w-2xl mx-auto px-4 pt-3 pb-2.5">
-    <div class="flex items-center gap-2.5 min-w-0 mb-3">
-      <span class="hazard-stripe w-8 h-8 rounded-sm shrink-0" aria-hidden="true"></span>
-      <h1 class="text-lg font-black tracking-tight leading-none uppercase truncate">
-        <span class="text-urgent">Urgence</span> <span class="text-ink">Entraide Incendie</span>
-      </h1>
+<!-- Conteneur principal : 1 colonne en dessous de 1024px, 2 colonnes au-delà
+     (colonne gauche fixe/sticky : identité + actions + infos ; colonne
+     droite scrollable : recherche, filtres, fil des annonces). -->
+<div class="flex-1 w-full max-w-[1120px] mx-auto px-4 pb-16 lg:grid lg:grid-cols-[340px_1fr] lg:gap-8 lg:items-start">
+
+  <!-- ============================= COLONNE GAUCHE ============================= -->
+  <div class="sidebar-col lg:sticky lg:top-16 pt-4 lg:pt-6">
+
+    <!-- Logo : tuile orange + flamme -->
+    <div class="flex items-center gap-3 mb-4">
+      <div class="logo-tile w-11 h-11 rounded-lg" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1 0-1-.3-2 2 2 3.3 4.6 3.3 7.5A8 8 0 1 1 5 13.5C5 10 7.5 7 9 5c1.2-1.6 3-2 3-3Z"/></svg>
+      </div>
+      <div class="leading-tight min-w-0">
+        <p class="text-lg font-extrabold uppercase tracking-tight text-gray-900 truncate">Urgence</p>
+        <p class="text-sm font-semibold text-gray-700 -mt-0.5 truncate">Entraide Incendie</p>
+      </div>
     </div>
-    <!-- CTA permanents : toujours visibles, où qu'on soit sur la page -->
-    <div class="grid grid-cols-2 gap-2">
-      <button id="btn-demander" class="bg-urgent hover:bg-urgent-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-md py-2.5 flex items-center justify-center gap-1.5">
+
+    <!-- CTA permanents -->
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <button id="btn-demander" class="min-h-[52px] bg-urgent hover:bg-urgent-dark active:scale-[0.98] transition text-white font-extrabold uppercase tracking-wide text-[15px] rounded-xl flex items-center justify-center gap-1.5">
         🆘 Demander
       </button>
-      <button id="btn-proposer" class="bg-solid hover:bg-solid-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-md py-2.5 flex items-center justify-center gap-1.5">
-        🏡 Proposer
+      <button id="btn-proposer" class="min-h-[52px] bg-solid hover:bg-solid-dark active:scale-[0.98] transition text-white font-extrabold uppercase tracking-wide text-[15px] rounded-xl flex items-center justify-center gap-1.5">
+        🤝 Proposer
       </button>
     </div>
-    <p id="sync-status" class="font-mono text-[10px] tracking-wide text-ink/40 mt-2 flex items-center gap-1.5"></p>
-  </div>
-</header>
+    <p id="sync-status" class="font-semibold text-xs tracking-wide text-gray-500 mb-4 flex items-center gap-1.5"></p>
 
-<main class="flex-1 max-w-2xl mx-auto w-full px-4 pb-16">
-
-  <!-- Bannière d'import via lien partagé -->
-  <div id="import-banner" class="hidden mt-4 bg-solid-light border-l-4 border-solid text-solid-dark text-xs rounded px-3 py-2.5 font-semibold">
-    ✅ Une annonce partagée par lien a été ajoutée au fil.
-  </div>
-
-  <!-- Info officielle Bordeaux Métropole : centre d'accueil / dons (mise à jour manuelle, voir source) -->
-  <div class="mt-4 bg-solid-light border-l-4 border-solid text-solid-dark text-xs rounded px-3 py-2.5 leading-relaxed">
-    <span class="font-mono uppercase tracking-wide text-solid-dark/70 text-[10px]">📋 Info officielle — Bordeaux Métropole</span><br>
-    Centre d'accueil d'urgence ouvert au <strong>Hall 3 du Parc des Expositions de Bordeaux-Lac</strong> (accès Porte M, Cours Jules Ladoumègue). Lits de camp, douches (complexe Colette Besson), repas, accueil des animaux. <strong>Les dons se déposent uniquement en mairie</strong> (pas directement sur site) — chaque commune centralise et achemine.
-    <br><a href="https://www.bordeaux.fr/le-mag/incendies-en-gironde-accueil-des-personnes-evacuees-et-collecte-de-dons-a-bordeaux" target="_blank" rel="noopener" class="underline font-bold">📞 Voir la page officielle à jour →</a>
-    <span class="block mt-1 text-solid-dark/50 font-mono text-[10px]">Résumé vérifié le 27/07/2026 — la situation évolue vite : clique le lien ci-dessus pour les toutes dernières infos.</span>
-  </div>
-
-  <!-- Tableau de bord rapide -->
-  <div id="stats-bar" class="mt-4 grid grid-cols-2 gap-2 text-center"></div>
-
-  <!-- Recherche + tri -->
-  <section class="mt-4 flex gap-2">
-    <div class="relative flex-1">
-      <input id="search-box" type="search" placeholder="🔍 Rechercher (ex : matelas, camping, chambre…)"
-        class="w-full rounded-md border border-sand px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-solid">
+    <!-- Info officielle Bordeaux Métropole -->
+    <div class="bg-solid-light border border-emerald-200 text-emerald-800 text-xs rounded-2xl px-4 py-3.5 leading-relaxed mb-4">
+      <span class="font-bold uppercase tracking-wide text-emerald-700/80 text-xs">📋 Info officielle — Bordeaux Métropole</span><br>
+      Centre d'accueil d'urgence ouvert au <strong>Hall 3 du Parc des Expositions de Bordeaux-Lac</strong> (accès Porte M, Cours Jules Ladoumègue). Lits de camp, douches (complexe Colette Besson), repas, accueil des animaux. <strong>Les dons se déposent uniquement en mairie</strong> (pas directement sur site) — chaque commune centralise et achemine.
+      <br><a href="https://www.bordeaux.fr/le-mag/incendies-en-gironde-accueil-des-personnes-evacuees-et-collecte-de-dons-a-bordeaux" target="_blank" rel="noopener" class="underline font-bold">📞 Voir la page officielle à jour →</a>
+      <span class="block mt-1 text-emerald-700/60 text-xs">Résumé vérifié le 27/07/2026 — la situation évolue vite : clique le lien ci-dessus pour les toutes dernières infos.</span>
     </div>
-    <select id="sort-select" class="rounded-md border border-sand px-2 py-2.5 text-xs font-bold uppercase tracking-wide text-ink/70 focus:outline-none focus:ring-2 focus:ring-solid">
-      <option value="recent">Plus récent</option>
-      <option value="ancien">Plus ancien</option>
-      <option value="distance" disabled>Plus proche</option>
-    </select>
-  </section>
 
-  <!-- Vue Fil / Carte + géolocalisation + filtres + masquer pourvues -->
-  <section class="mt-3 flex flex-wrap items-center gap-2">
-    <div class="flex rounded-md border border-sand overflow-hidden text-xs font-bold uppercase tracking-wide">
-      <button id="btn-view-feed" data-active="true" class="view-toggle-btn px-3 py-1.5">☰ Fil</button>
-      <button id="btn-view-map" data-active="false" class="view-toggle-btn px-3 py-1.5 border-l border-sand">🗺️ Carte</button>
-    </div>
-    <button id="btn-geoloc" class="text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-md px-3 py-1.5 text-ink/70">📍 Autour de moi</button>
-    <button id="btn-open-filters" class="text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-md px-3 py-1.5 text-ink/70 flex items-center gap-1.5">
-      ☰ Filtres <span id="filters-active-count" class="hidden bg-urgent text-white rounded-full min-w-[16px] h-4 px-1 text-[10px] leading-4 text-center"></span>
-    </button>
-    <label class="flex items-center gap-1.5 text-xs font-semibold text-ink/60 ml-auto cursor-pointer select-none">
-      <input id="chk-hide-resolved" type="checkbox" class="rounded border-sand">
-      Masquer clôturées/en pause
-    </label>
-  </section>
-
-  <!-- Carte interactive (masquée par défaut, affichée via le bouton "Carte") -->
-  <section id="map-view" class="hidden mt-3 rounded-md border border-sand overflow-hidden">
-    <div id="map-container" style="height: 360px;"></div>
-    <p class="text-[11px] text-ink/40 px-3 py-2 bg-white">📍 Seules les annonces avec une adresse choisie via les suggestions (pas en saisie libre) apparaissent sur la carte.</p>
-  </section>
-
-  <!-- Panneau de filtres (façon menu latéral site marchand) -->
-  <div id="filters-backdrop" class="hidden fixed inset-0 bg-ink/50 z-40"></div>
-  <aside id="filters-drawer" class="hidden fixed top-0 left-0 bottom-0 z-50 w-[85vw] max-w-xs bg-warm-50 shadow-xl overflow-y-auto">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-sand/60 bg-white sticky top-0">
-      <h3 class="font-black uppercase tracking-tight text-sm">Filtres</h3>
-      <button id="btn-close-filters" class="text-ink/50 hover:text-ink text-xl leading-none px-1" aria-label="Fermer les filtres">×</button>
-    </div>
-    <div class="px-4 py-3">
-      <button id="btn-reset-filters" class="text-xs font-bold uppercase text-urgent underline mb-3">Réinitialiser tous les filtres</button>
-
-      <h4 class="font-mono text-[10px] uppercase tracking-widest text-ink/40 mt-3 mb-1.5">Type</h4>
-      <div id="facet-type" class="flex flex-col gap-1"></div>
-
-      <h4 class="font-mono text-[10px] uppercase tracking-widest text-ink/40 mt-4 mb-1.5">Catégorie</h4>
-      <div id="facet-cat" class="flex flex-col gap-1"></div>
-
-      <h4 class="font-mono text-[10px] uppercase tracking-widest text-ink/40 mt-4 mb-1.5">Zone</h4>
-      <div id="facet-zone" class="flex flex-col gap-1"></div>
-    </div>
-  </aside>
-
-  <!-- Fil d'annonces -->
-  <div class="flex items-center gap-2 mt-6 mb-1">
-    <h2 class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink/50">Fil des annonces</h2>
-    <span class="flex-1 h-px bg-sand/70"></span>
-    <span id="result-count" class="font-mono text-[10px] text-ink/40 shrink-0"></span>
-  </div>
-  <section id="feed" class="mt-2 space-y-3"></section>
-
-  <div id="empty-state" class="hidden text-center py-14 text-ink/40">
-    <p class="text-4xl mb-2">🕊️</p>
-    <p class="font-bold uppercase tracking-tight">Aucune annonce ne correspond</p>
-    <p class="text-sm">Essaie d'élargir tes filtres, ou sois le premier à publier.</p>
+    <!-- Tableau de bord rapide -->
+    <div id="stats-bar" class="grid grid-cols-2 gap-2 text-center"></div>
   </div>
 
-  <!-- Pagination -->
-  <div id="pagination" class="hidden flex items-center justify-between gap-3 mt-6"></div>
+  <!-- ============================= COLONNE DROITE ============================= -->
+  <div class="mt-6 lg:mt-4 min-w-0">
 
-  <!-- Mur de soutien -->
-  <div class="flex items-center gap-2 mt-10 mb-1">
-    <h2 class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink/50">Mur de soutien</h2>
+    <!-- Bannière d'import via lien partagé -->
+    <div id="import-banner" class="hidden mb-4 bg-solid-light border border-emerald-200 text-emerald-800 text-xs rounded-2xl px-4 py-3 font-semibold">
+      ✅ Une annonce partagée par lien a été ajoutée au fil.
+    </div>
+
+    <!-- Recherche + tri -->
+    <section class="flex gap-2">
+      <div class="relative flex-1">
+        <input id="search-box" type="search" placeholder="🔍 Rechercher (ex : matelas, camping, chambre…)"
+          class="w-full min-h-[48px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+      </div>
+      <select id="sort-select" class="min-h-[48px] rounded-xl border border-sand px-3 text-xs font-bold uppercase tracking-wide text-gray-700 focus:outline-none focus:ring-2 focus:ring-solid">
+        <option value="recent">Plus récent</option>
+        <option value="ancien">Plus ancien</option>
+        <option value="distance" disabled>Plus proche</option>
+      </select>
+    </section>
+
+    <!-- Vue Fil / Carte + géolocalisation + masquer clôturées -->
+    <section class="mt-3 flex flex-wrap items-center gap-2">
+      <div class="flex rounded-xl border border-sand overflow-hidden text-xs font-bold uppercase tracking-wide">
+        <button id="btn-view-feed" data-active="true" class="view-toggle-btn min-h-[44px] px-3.5">☰ Fil</button>
+        <button id="btn-view-map" data-active="false" class="view-toggle-btn min-h-[44px] px-3.5 border-l border-sand">🗺️ Carte</button>
+      </div>
+      <button id="btn-geoloc" class="min-h-[44px] text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-xl px-3.5 text-gray-700">📍 Autour de moi</button>
+      <label class="tap-target-checkbox gap-1.5 text-xs font-semibold text-gray-600 ml-auto cursor-pointer select-none">
+        <input id="chk-hide-resolved" type="checkbox" class="rounded border-sand">
+        Masquer clôturées/en pause
+      </label>
+    </section>
+
+    <!-- Carte interactive -->
+    <section id="map-view" class="hidden mt-3 rounded-2xl border border-sand overflow-hidden">
+      <div id="map-container" style="height: 360px;"></div>
+      <p class="text-xs text-gray-500 px-3 py-2 bg-white">📍 Seules les annonces avec une adresse choisie via les suggestions (pas en saisie libre) apparaissent sur la carte.</p>
+    </section>
+
+    <!-- Filtres : rangées en ligne, flex-wrap (jamais tronquées) -->
+    <section class="mt-4 space-y-2">
+      <div id="facet-type" class="flex flex-wrap items-center gap-2"></div>
+      <div id="facet-cat" class="flex flex-wrap items-center gap-2"></div>
+      <div id="facet-zone" class="flex flex-wrap items-center gap-2"></div>
+    </section>
+
+    <!-- Fil d'annonces -->
+    <div class="flex items-center gap-2 mt-6 mb-1">
+      <h2 class="font-bold uppercase tracking-[0.1em] text-gray-500 text-xs">Fil des annonces</h2>
+      <span class="flex-1 h-px bg-sand/70"></span>
+      <span id="result-count" class="font-semibold text-xs text-gray-500 shrink-0"></span>
+    </div>
+    <section id="feed" class="mt-2 space-y-3"></section>
+
+    <div id="empty-state" class="hidden text-center py-14 text-gray-400">
+      <p class="text-4xl mb-2">🕊️</p>
+      <p class="font-bold uppercase tracking-tight text-gray-600">Aucune annonce ne correspond</p>
+      <p class="text-sm">Essaie d'élargir tes filtres, ou sois le premier à publier.</p>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="hidden flex items-center justify-between gap-3 mt-6"></div>
+  </div>
+</div>
+
+<!-- Mur de soutien (pleine largeur, sous les 2 colonnes) -->
+<div class="w-full max-w-[1120px] mx-auto px-4 pb-16">
+  <div class="flex items-center gap-2 mt-4 mb-1">
+    <h2 class="font-bold uppercase tracking-[0.1em] text-gray-500 text-xs">Mur de soutien</h2>
     <span class="flex-1 h-px bg-sand/70"></span>
   </div>
-  <p class="text-xs text-ink/50 mb-3">Un mot pour les victimes, les pompiers, les soignants, les bénévoles, les donateurs — tout le monde qui se mobilise.</p>
+  <p class="text-xs text-gray-500 mb-3">Un mot pour les victimes, les pompiers, les soignants, les bénévoles, les donateurs — tout le monde qui se mobilise.</p>
 
   <!-- Bandeau défilant (liste de remerciements fixe + messages postés, mélangés) -->
-  <div class="ticker-wrap bg-ink rounded-md mb-3">
+  <div class="ticker-wrap bg-ink rounded-2xl mb-3">
     <div id="ticker-track" class="ticker-track"></div>
   </div>
 
-  <button id="btn-soutien" class="w-full bg-signal hover:bg-signal-dark active:scale-[0.98] transition text-ink font-bold uppercase tracking-wide text-sm rounded-md py-2.5 flex items-center justify-center gap-1.5 mb-3">
+  <button id="btn-soutien" class="min-h-[52px] w-full bg-signal hover:bg-signal-dark active:scale-[0.98] transition text-ink font-bold uppercase tracking-wide text-sm rounded-xl flex items-center justify-center gap-1.5 mb-3">
     💛 Envoyer un message de soutien
   </button>
 
   <div id="soutien-wall" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-  <p id="soutien-empty" class="hidden text-center text-xs text-ink/40 py-4">Aucun message pour l'instant — sois le premier à en laisser un.</p>
-</main>
+  <p id="soutien-empty" class="hidden text-center text-xs text-gray-400 py-4">Aucun message pour l'instant — sois le premier à en laisser un.</p>
+</div>
 
 <!-- Modale message de soutien -->
 <div id="soutien-modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-5 relative">
-    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl sm:rounded-t-lg" aria-hidden="true"></span>
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative">
+    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl" aria-hidden="true"></span>
     <div class="flex items-center justify-between mb-4 mt-1">
       <h3 class="text-lg font-black uppercase tracking-tight">💛 Message de soutien</h3>
       <button id="btn-close-soutien-modal" class="text-ink/40 hover:text-ink text-2xl leading-none px-2" aria-label="Fermer">×</button>
     </div>
     <form id="soutien-form" class="space-y-3">
       <div>
-        <label for="soutien-message" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Ton message</label>
+        <label for="soutien-message" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Ton message</label>
         <textarea id="soutien-message" required maxlength="200" rows="3" placeholder="Ex : Merci à tous les pompiers pour leur courage 👏"
-          class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
-        <p class="text-[11px] text-ink/40 mt-1 text-right"><span id="soutien-char-count">0</span>/200</p>
+          class="w-full rounded-xl border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
+        <p class="text-xs text-gray-400 mt-1 text-right"><span id="soutien-char-count">0</span>/200</p>
       </div>
       <div>
-        <label for="soutien-pseudo" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Prénom ou pseudo (facultatif)</label>
-        <input id="soutien-pseudo" type="text" maxlength="30" placeholder="Anonyme" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+        <label for="soutien-pseudo" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Prénom ou pseudo (facultatif)</label>
+        <input id="soutien-pseudo" type="text" maxlength="30" placeholder="Anonyme" class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
       </div>
-      <button type="submit" class="w-full bg-signal hover:bg-signal-dark active:scale-[0.98] transition text-ink font-bold uppercase tracking-wide text-sm rounded-md py-3.5">
+      <button type="submit" class="min-h-[52px] w-full bg-signal hover:bg-signal-dark active:scale-[0.98] transition text-ink font-bold uppercase tracking-wide text-sm rounded-xl">
         Envoyer
       </button>
     </form>
@@ -233,8 +229,8 @@
 
 <!-- Modale formulaire annonce -->
 <div id="modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg max-h-[92vh] overflow-y-auto p-5 relative">
-    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl sm:rounded-t-lg" aria-hidden="true"></span>
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto p-5 relative">
+    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl" aria-hidden="true"></span>
     <div class="flex items-center justify-between mb-4 mt-1">
       <h3 id="modal-title" class="text-lg font-black uppercase tracking-tight">Publier une annonce</h3>
       <button id="btn-close-modal" class="text-ink/40 hover:text-ink text-2xl leading-none px-2" aria-label="Fermer">×</button>
@@ -243,23 +239,23 @@
     <form id="annonce-form" class="space-y-4">
       <!-- Type -->
       <div>
-        <span class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-2">Je...</span>
+        <span class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-2">Je...</span>
         <div class="grid grid-cols-2 gap-2">
-          <label class="type-radio-label cursor-pointer border-2 rounded-md p-3 text-center font-bold text-sm">
+          <label class="type-radio-label cursor-pointer border-2 rounded-xl p-3 min-h-[52px] flex items-center justify-center text-center font-bold text-sm">
             <input type="radio" name="type" value="besoin" class="sr-only" required>
             🆘 cherche de l'aide
           </label>
-          <label class="type-radio-label cursor-pointer border-2 rounded-md p-3 text-center font-bold text-sm">
+          <label class="type-radio-label cursor-pointer border-2 rounded-xl p-3 min-h-[52px] flex items-center justify-center text-center font-bold text-sm">
             <input type="radio" name="type" value="offre" class="sr-only" required>
-            🏡 propose de l'aide
+            🤝 propose de l'aide
           </label>
         </div>
       </div>
 
       <!-- Catégorie -->
       <div>
-        <label for="f-categorie" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Type d'aide</label>
-        <select id="f-categorie" required class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+        <label for="f-categorie" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Type d'aide</label>
+        <select id="f-categorie" required class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
           <option value="" disabled selected>Choisir…</option>
           <option value="logement">🏠 Logement entier</option>
           <option value="chambre">🛏️ Chambre d'amis</option>
@@ -274,43 +270,43 @@
       <!-- Localisation précise : autocomplétion d'adresse façon Google Maps -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="relative">
-          <label for="f-commune-input" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Ville</label>
+          <label for="f-commune-input" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Ville</label>
           <input id="f-commune-input" type="text" required autocomplete="off" placeholder="Tape une ville : Bordeaux, Mérignac, Biscarrosse…"
-            class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+            class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
           <input type="hidden" id="f-commune">
           <input type="hidden" id="f-lat">
           <input type="hidden" id="f-lon">
-          <ul id="f-commune-suggestions" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-sand rounded-md shadow-lg max-h-56 overflow-y-auto"></ul>
-          <p class="text-[11px] text-ink/40 mt-1">Suggestions officielles (Base Adresse Nationale). Pas d'internet ? Tape simplement le nom, ça marche aussi.</p>
+          <ul id="f-commune-suggestions" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-sand rounded-xl shadow-lg max-h-56 overflow-y-auto"></ul>
+          <p class="text-xs text-gray-400 mt-1">Suggestions officielles (Base Adresse Nationale). Pas d'internet ? Tape simplement le nom, ça marche aussi.</p>
         </div>
         <div>
-          <label for="f-quartier" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Quartier / repère</label>
+          <label for="f-quartier" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Quartier / repère</label>
           <input id="f-quartier" type="text" placeholder="Ex : proche camping, centre-ville…"
-            class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+            class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
         </div>
       </div>
 
       <!-- Description -->
       <div>
-        <label for="f-description" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Description rapide</label>
+        <label for="f-description" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Description rapide</label>
         <textarea id="f-description" required maxlength="220" rows="3" placeholder="Ex : Chambre disponible pour 2 pers., arrivée possible ce soir, parking dispo."
-          class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
+          class="w-full rounded-xl border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
       </div>
 
       <!-- Contact -->
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label for="f-prenom" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Prénom</label>
-          <input id="f-prenom" required type="text" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+          <label for="f-prenom" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Prénom</label>
+          <input id="f-prenom" required type="text" class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
         </div>
         <div>
-          <label for="f-tel" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Téléphone</label>
-          <input id="f-tel" required type="tel" inputmode="tel" placeholder="06 12 34 56 78 ou +33…" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
-          <p id="f-tel-error" class="hidden text-[11px] text-urgent font-semibold mt-1">Numéro invalide (10 chiffres, ou +33 suivi de 9 chiffres)</p>
+          <label for="f-tel" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Téléphone</label>
+          <input id="f-tel" required type="tel" inputmode="tel" placeholder="06 12 34 56 78 ou +33…" class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+          <p id="f-tel-error" class="hidden text-xs text-urgent font-semibold mt-1">Numéro invalide (10 chiffres, ou +33 suivi de 9 chiffres)</p>
         </div>
       </div>
 
-      <button type="submit" class="w-full bg-urgent hover:bg-urgent-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-md py-3.5">
+      <button type="submit" class="min-h-[52px] w-full bg-urgent hover:bg-urgent-dark active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-xl">
         Publier maintenant
       </button>
       <p id="form-error" class="hidden text-sm text-urgent font-semibold text-center"></p>
@@ -320,32 +316,32 @@
 
 <!-- Modale succès + partage WhatsApp immédiat -->
 <div id="share-modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-6 text-center relative overflow-hidden">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 text-center relative overflow-hidden">
     <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5" aria-hidden="true"></span>
     <p class="text-4xl mb-2 mt-2">✅</p>
     <h3 class="text-lg font-black uppercase tracking-tight mb-1">Annonce publiée !</h3>
-    <p class="text-sm text-ink/70 mb-5">Partage-la maintenant sur WhatsApp pour qu'elle circule immédiatement dans les groupes d'entraide.</p>
+    <p class="text-sm text-gray-600 mb-5">Partage-la maintenant sur WhatsApp pour qu'elle circule immédiatement dans les groupes d'entraide.</p>
     <a id="btn-share-whatsapp-now" href="#" target="_blank" rel="noopener"
-      class="w-full flex items-center justify-center gap-2 bg-wa hover:bg-wa-dark active:scale-[0.98] transition text-white font-extrabold text-base rounded-md py-3.5 mb-2">
+      class="min-h-[52px] w-full flex items-center justify-center gap-2 bg-wa hover:bg-wa-dark active:scale-[0.98] transition text-white font-extrabold text-base rounded-xl mb-2">
       <span class="text-xl">📲</span> Partager sur WhatsApp
     </a>
-    <button id="btn-close-share-modal" class="w-full text-ink/50 font-semibold text-sm py-2">Plus tard</button>
+    <button id="btn-close-share-modal" class="min-h-[44px] w-full text-gray-500 font-semibold text-sm">Plus tard</button>
   </div>
 </div>
 
 <!-- Toast -->
-<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-ink text-warm-50 text-sm font-semibold px-4 py-2.5 rounded-md shadow-lg font-mono"></div>
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg"></div>
 
-<footer class="max-w-2xl mx-auto w-full px-4 py-6 text-center text-[11px] text-ink/40 leading-relaxed">
+<footer class="w-full max-w-[1120px] mx-auto px-4 py-6 text-center text-xs text-gray-400 leading-relaxed">
   Site citoyen d'entraide, non affilié aux services officiels. En cas de doute, suivez toujours les consignes de la préfecture et des secours.
   <br>Fait avec ❤️, pour soutien et idées d'améliorations : <a href="mailto:contact@evoshifting.com" class="underline">contact@evoshifting.com</a>
-  <br><button id="btn-forget-me" class="underline mt-1">Effacer mes informations enregistrées sur cet appareil</button>
+  <br><button id="btn-forget-me" class="underline mt-1 min-h-[44px]">Effacer mes informations enregistrées sur cet appareil</button>
 </footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
