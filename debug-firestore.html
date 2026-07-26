@@ -56,17 +56,25 @@
         });
 
       // TEST 2 : écriture ponctuelle simple (sans passer par l'app)
-      log('→ Test 2 : écriture ponctuelle d\'un document de test…');
-      const t1 = Date.now();
-      db.collection('annonces').doc('diag-test-doc').set({
-        id: 'diag-test-doc', type: 'offre', categorie: 'autre', commune: 'TEST DIAGNOSTIC',
-        description: 'Document de test créé par la page de diagnostic — à supprimer',
-        contactPrenom: 'Diagnostic', contactTel: '0000000000', createdAt: Date.now(), statut: 'ouvert'
-      }).then(() => {
-        log(`✅ TEST 2 RÉUSSI en ${Date.now() - t1}ms : écriture confirmée par le serveur.`, 'ok');
-      }).catch((err) => {
-        log(`❌ TEST 2 ÉCHOUÉ après ${Date.now() - t1}ms : ${err.code} — ${err.message}`, 'err');
-      });
+      // Désormais optionnel : n'écrit dans la vraie base QUE si l'URL contient
+      // ?write=1. Sans ce paramètre, ouvrir cette page reste 100% sans risque
+      // (lecture seule) — important car cette page peut être ouverte par
+      // n'importe qui connaissant son adresse, pas seulement toi.
+      if (new URLSearchParams(location.search).get('write') === '1') {
+        log('→ Test 2 : écriture ponctuelle d\'un document de test… (activé via ?write=1)');
+        const t1 = Date.now();
+        db.collection('annonces').doc('diag-test-doc').set({
+          id: 'diag-test-doc', type: 'offre', categorie: 'autre', commune: 'TEST DIAGNOSTIC',
+          description: 'Document de test créé par la page de diagnostic — à supprimer',
+          contactPrenom: 'Diagnostic', contactTel: '0000000000', createdAt: Date.now(), statut: 'ouvert'
+        }).then(() => {
+          log(`✅ TEST 2 RÉUSSI en ${Date.now() - t1}ms : écriture confirmée par le serveur. Pense à supprimer "diag-test-doc" via moderation.html.`, 'ok');
+        }).catch((err) => {
+          log(`❌ TEST 2 ÉCHOUÉ après ${Date.now() - t1}ms : ${err.code} — ${err.message}`, 'err');
+        });
+      } else {
+        log('→ Test 2 (écriture) désactivé par défaut. Ajoute ?write=1 à l\'URL pour l\'activer volontairement.', 'warn');
+      }
 
       // TEST 3 : listener temps réel (onSnapshot), sans AUCUN réglage
       // spécial (pas de forceLongPolling) — configuration Firestore la
