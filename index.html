@@ -184,7 +184,52 @@
 
   <!-- Pagination -->
   <div id="pagination" class="hidden flex items-center justify-between gap-3 mt-6"></div>
+
+  <!-- Mur de soutien -->
+  <div class="flex items-center gap-2 mt-10 mb-1">
+    <h2 class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink/50">Mur de soutien</h2>
+    <span class="flex-1 h-px bg-sand/70"></span>
+  </div>
+  <p class="text-xs text-ink/50 mb-3">Un mot pour les victimes, les pompiers, les soignants, les bénévoles, les donateurs — tout le monde qui se mobilise.</p>
+
+  <!-- Bandeau défilant (liste de remerciements fixe + messages postés, mélangés) -->
+  <div class="ticker-wrap bg-ink rounded-md mb-3">
+    <div id="ticker-track" class="ticker-track"></div>
+  </div>
+
+  <button id="btn-soutien" class="w-full bg-signal hover:bg-signal-dark active:scale-[0.98] transition text-ink font-bold uppercase tracking-wide text-sm rounded-md py-2.5 flex items-center justify-center gap-1.5 mb-3">
+    💛 Envoyer un message de soutien
+  </button>
+
+  <div id="soutien-wall" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+  <p id="soutien-empty" class="hidden text-center text-xs text-ink/40 py-4">Aucun message pour l'instant — sois le premier à en laisser un.</p>
 </main>
+
+<!-- Modale message de soutien -->
+<div id="soutien-modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-5 relative">
+    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl sm:rounded-t-lg" aria-hidden="true"></span>
+    <div class="flex items-center justify-between mb-4 mt-1">
+      <h3 class="text-lg font-black uppercase tracking-tight">💛 Message de soutien</h3>
+      <button id="btn-close-soutien-modal" class="text-ink/40 hover:text-ink text-2xl leading-none px-2" aria-label="Fermer">×</button>
+    </div>
+    <form id="soutien-form" class="space-y-3">
+      <div>
+        <label for="soutien-message" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Ton message</label>
+        <textarea id="soutien-message" required maxlength="200" rows="3" placeholder="Ex : Merci à tous les pompiers pour leur courage 👏"
+          class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
+        <p class="text-[11px] text-ink/40 mt-1 text-right"><span id="soutien-char-count">0</span>/200</p>
+      </div>
+      <div>
+        <label for="soutien-pseudo" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Prénom ou pseudo (facultatif)</label>
+        <input id="soutien-pseudo" type="text" maxlength="30" placeholder="Anonyme" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+      </div>
+      <button type="submit" class="w-full bg-signal hover:bg-signal-dark active:scale-[0.98] transition text-ink font-bold uppercase tracking-wide text-sm rounded-md py-3.5">
+        Envoyer
+      </button>
+    </form>
+  </div>
+</div>
 
 <!-- Modale formulaire annonce -->
 <div id="modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -300,7 +345,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

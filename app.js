@@ -1189,6 +1189,149 @@ function tryImportFromURL() {
 }
 
 /* =====================================================================
+   MUR DE SOUTIEN — messages libres (pas de statut, pas de contact requis),
+   stockés dans une collection Firestore séparée ("soutien"). Même
+   stratégie de sondage périodique que pour les annonces (la seule
+   méthode dont on a la preuve qu'elle fonctionne dans cet environnement).
+===================================================================== */
+
+const FIXED_THANKS = [
+  '👏 Merci aux pompiers', '👏 Merci aux personnels médicaux et paramédicaux',
+  '👏 Merci aux responsables et personnels des EHPAD', '👏 Merci à la sécurité civile',
+  '👏 Merci aux forces de l\'ordre et corps d\'état mobilisés', '👏 Merci aux bénévoles',
+  '👏 Merci aux donateurs', '👏 Merci aux citoyens solidaires', '👏 Une pensée pour les victimes',
+];
+
+const SOUTIEN_STORAGE_KEY = 'uei_soutien_v1';
+let soutienCache = [];
+let soutienMigrated = false;
+
+function loadSoutienLocal() {
+  try { return JSON.parse(localStorage.getItem(SOUTIEN_STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function saveSoutienLocal(items) {
+  try { localStorage.setItem(SOUTIEN_STORAGE_KEY, JSON.stringify(items)); } catch {}
+}
+
+async function pollSoutien(isFirst) {
+  if (!db) return;
+  try {
+    const snap = await db.collection('soutien').orderBy('createdAt', 'desc').limit(150).get();
+    soutienCache = snap.docs.map(d => d.data());
+    saveSoutienLocal(soutienCache);
+    if (isFirst && !soutienMigrated) {
+      soutienMigrated = true;
+      const localBefore = loadSoutienLocal();
+      const knownIds = new Set(soutienCache.map(m => m.id));
+      const orphans = localBefore.filter(m => !knownIds.has(m.id));
+      if (orphans.length) {
+        soutienCache = [...orphans, ...soutienCache].sort((a, b) => b.createdAt - a.createdAt);
+        saveSoutienLocal(soutienCache);
+        orphans.forEach(m => db.collection('soutien').doc(m.id).set(m, { merge: true }).catch(() => {}));
+      }
+    }
+    renderTicker();
+    renderSoutienWall();
+  } catch (err) {
+    console.warn('[UEI] Échec sondage soutien', err);
+  }
+}
+
+function addSoutienMessage(message, pseudo) {
+  const m = { id: makeId(), message, pseudo: pseudo || null, createdAt: Date.now() };
+  soutienCache = [m, ...soutienCache];
+  saveSoutienLocal(soutienCache);
+  renderTicker();
+  renderSoutienWall();
+  if (db) {
+    db.collection('soutien').doc(m.id).set(m).catch((err) => {
+      console.warn('[UEI] Échec envoi message de soutien, restera local seulement', err);
+    });
+  }
+  return m;
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderTicker() {
+  const liveItems = soutienCache.slice(0, 30).map(m =>
+    `<span class="ticker-item">💬 ${escapeHTML(m.message)} <span class="ticker-pseudo">— ${escapeHTML(m.pseudo || 'Anonyme')}</span></span>`
+  );
+  const fixedItems = FIXED_THANKS.map(t => `<span class="ticker-item">${t}</span>`);
+  // Mélange des deux listes (remerciements fixes + messages postés), en boucle
+  const merged = [];
+  const maxLen = Math.max(fixedItems.length, liveItems.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (fixedItems[i]) merged.push(fixedItems[i]);
+    if (liveItems[i]) merged.push(liveItems[i]);
+  }
+  if (!merged.length) return;
+  // Le contenu est dupliqué deux fois : l'animation CSS translate -50%
+  // crée ainsi une boucle parfaitement continue, sans saut visible.
+  tickerTrack.innerHTML = merged.join('') + merged.join('');
+}
+
+function renderSoutienWall() {
+  if (!soutienCache.length) {
+    soutienWall.innerHTML = '';
+    soutienEmpty.classList.remove('hidden');
+    return;
+  }
+  soutienEmpty.classList.add('hidden');
+  const shown = shuffle(soutienCache).slice(0, 24);
+  soutienWall.innerHTML = shown.map(m => `
+    <div class="soutien-card">
+      “${escapeHTML(m.message)}”
+      <span class="soutien-pseudo">${escapeHTML(m.pseudo || 'Anonyme')}</span>
+    </div>`).join('');
+}
+
+const btnSoutien = el('btn-soutien');
+const soutienModalBackdrop = el('soutien-modal-backdrop');
+const btnCloseSoutienModal = el('btn-close-soutien-modal');
+const soutienForm = el('soutien-form');
+const soutienMessageInput = el('soutien-message');
+const soutienPseudoInput = el('soutien-pseudo');
+const soutienCharCount = el('soutien-char-count');
+const soutienWall = el('soutien-wall');
+const soutienEmpty = el('soutien-empty');
+const tickerTrack = el('ticker-track');
+
+// Affiche déjà les remerciements fixes avant même toute connexion réseau
+renderTicker();
+
+function openSoutienModal() {
+  soutienForm.reset();
+  soutienCharCount.textContent = '0';
+  soutienModalBackdrop.classList.remove('hidden');
+}
+function closeSoutienModal() { soutienModalBackdrop.classList.add('hidden'); }
+
+btnSoutien.addEventListener('click', openSoutienModal);
+btnCloseSoutienModal.addEventListener('click', closeSoutienModal);
+soutienModalBackdrop.addEventListener('click', (e) => { if (e.target === soutienModalBackdrop) closeSoutienModal(); });
+soutienMessageInput.addEventListener('input', () => {
+  soutienCharCount.textContent = String(soutienMessageInput.value.length);
+});
+soutienForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const message = soutienMessageInput.value.trim();
+  const pseudo = soutienPseudoInput.value.trim();
+  if (!message) return;
+  addSoutienMessage(message.slice(0, 200), pseudo.slice(0, 30));
+  closeSoutienModal();
+  showToast('Merci pour ce message 💛');
+});
+
+/* =====================================================================
    TOAST
 ===================================================================== */
 
@@ -1209,5 +1352,14 @@ async function init() {
   await initSync();          // on attend de savoir si on est connecté (max 4s)
   tryImportFromURL();        // ...avant d'importer un lien reçu, pour qu'il soit bien partagé si on est en ligne
   renderFeed();               // affiche l'annonce importée le cas échéant
+
+  soutienCache = loadSoutienLocal();
+  renderTicker();
+  renderSoutienWall();
+  if (db) {
+    pollSoutien(true);
+    const t = setInterval(() => pollSoutien(false), POLL_INTERVAL_MS);
+    if (typeof t.unref === 'function') t.unref();
+  }
 }
 init();
