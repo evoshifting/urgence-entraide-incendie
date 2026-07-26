@@ -34,7 +34,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2322262A%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23D6451B%22>▲</text></svg>">
-<link rel="stylesheet" href="tailwind-built.css?v=1">
+<link rel="stylesheet" href="tailwind-built.css?v=2">
 <link rel="stylesheet" href="style.css?v=2">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
@@ -60,10 +60,21 @@
 </div>
 <div class="hazard-stripe h-1.5" aria-hidden="true"></div>
 
+<!-- Alerte navigateur intégré (WhatsApp, Instagram, etc.) : Firestore ne
+     fonctionne pas fiablement dans ces navigateurs bridés — masquée par
+     défaut, affichée par JS si détectée (voir app.js: checkInAppBrowser). -->
+<div id="inapp-banner" class="hidden bg-signal text-ink text-sm px-4 py-3 flex items-start gap-2 leading-snug">
+  <span aria-hidden="true">⚠️</span>
+  <span class="flex-1">
+    <strong>Tu es dans le navigateur intégré d'une appli</strong> (WhatsApp, Instagram...) — le partage en temps réel ne fonctionne pas fiablement ici.
+    Appuie sur <strong>⋯</strong> ou l'icône de partage <strong>en haut/bas de l'écran</strong>, puis choisis <strong>« Ouvrir dans Safari »</strong> (ou Chrome).
+  </span>
+  <button id="btn-close-inapp-banner" class="text-ink/60 hover:text-ink text-lg leading-none px-1" aria-label="Fermer">×</button>
+</div>
+
 <!-- Header : masthead + CTA permanents -->
 <header class="sticky top-0 z-30 bg-warm-50/95 backdrop-blur border-b border-sand/60">
   <div class="max-w-2xl mx-auto px-4 pt-3 pb-2.5">
-    <p class="font-mono text-[10px] tracking-[0.18em] uppercase text-ink/50 mb-1">Bulletin citoyen · Bassin d'Arcachon &amp; Métropole bordelaise</p>
     <div class="flex items-center gap-2.5 min-w-0 mb-3">
       <span class="hazard-stripe w-8 h-8 rounded-sm shrink-0" aria-hidden="true"></span>
       <h1 class="text-lg font-black tracking-tight leading-none uppercase truncate">
@@ -90,18 +101,12 @@
     ✅ Une annonce partagée par lien a été ajoutée au fil.
   </div>
 
-  <!-- Info stockage local -->
-  <div class="mt-4 bg-white border-l-4 border-sand text-ink/70 text-xs rounded px-3 py-2.5 leading-relaxed">
-    <span class="font-mono uppercase tracking-wide text-ink/50 text-[10px]">Note</span><br>
-    Les annonces sont enregistrées sur cet appareil. Pour qu'une annonce circule, utilise le bouton <strong class="text-ink">« Partager sur WhatsApp »</strong> sur chaque carte : le lien envoyé l'ajoute automatiquement au fil de la personne qui l'ouvre.
-  </div>
-
   <!-- Info officielle Bordeaux Métropole : centre d'accueil / dons (mise à jour manuelle, voir source) -->
-  <div class="mt-3 bg-solid-light border-l-4 border-solid text-solid-dark text-xs rounded px-3 py-2.5 leading-relaxed">
+  <div class="mt-4 bg-solid-light border-l-4 border-solid text-solid-dark text-xs rounded px-3 py-2.5 leading-relaxed">
     <span class="font-mono uppercase tracking-wide text-solid-dark/70 text-[10px]">📋 Info officielle — Bordeaux Métropole</span><br>
     Centre d'accueil d'urgence ouvert au <strong>Hall 3 du Parc des Expositions de Bordeaux-Lac</strong> (accès Porte M, Cours Jules Ladoumègue). Lits de camp, douches (complexe Colette Besson), repas, accueil des animaux. <strong>Les dons se déposent uniquement en mairie</strong> (pas directement sur site) — chaque commune centralise et achemine.
-    <br><a href="https://www.bordeaux.fr/le-mag/incendies-en-gironde-accueil-des-personnes-evacuees-et-collecte-de-dons-a-bordeaux" target="_blank" rel="noopener" class="underline font-semibold">Voir la page officielle à jour →</a>
-    <span class="block mt-1 text-solid-dark/50 font-mono text-[10px]">Résumé vérifié le 24/07/2026 — la situation évolue vite, se référer au lien pour les dernières infos.</span>
+    <br><a href="https://www.bordeaux.fr/le-mag/incendies-en-gironde-accueil-des-personnes-evacuees-et-collecte-de-dons-a-bordeaux" target="_blank" rel="noopener" class="underline font-bold">📞 Voir la page officielle à jour →</a>
+    <span class="block mt-1 text-solid-dark/50 font-mono text-[10px]">Résumé vérifié le 27/07/2026 — la situation évolue vite : clique le lien ci-dessus pour les toutes dernières infos.</span>
   </div>
 
   <!-- Tableau de bord rapide -->
@@ -120,16 +125,19 @@
     </select>
   </section>
 
-  <!-- Vue Fil / Carte + géolocalisation + masquer pourvues -->
+  <!-- Vue Fil / Carte + géolocalisation + filtres + masquer pourvues -->
   <section class="mt-3 flex flex-wrap items-center gap-2">
     <div class="flex rounded-md border border-sand overflow-hidden text-xs font-bold uppercase tracking-wide">
       <button id="btn-view-feed" data-active="true" class="view-toggle-btn px-3 py-1.5">☰ Fil</button>
       <button id="btn-view-map" data-active="false" class="view-toggle-btn px-3 py-1.5 border-l border-sand">🗺️ Carte</button>
     </div>
     <button id="btn-geoloc" class="text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-md px-3 py-1.5 text-ink/70">📍 Autour de moi</button>
+    <button id="btn-open-filters" class="text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-md px-3 py-1.5 text-ink/70 flex items-center gap-1.5">
+      ☰ Filtres <span id="filters-active-count" class="hidden bg-urgent text-white rounded-full min-w-[16px] h-4 px-1 text-[10px] leading-4 text-center"></span>
+    </button>
     <label class="flex items-center gap-1.5 text-xs font-semibold text-ink/60 ml-auto cursor-pointer select-none">
       <input id="chk-hide-resolved" type="checkbox" class="rounded border-sand">
-      Masquer pourvues/en pause
+      Masquer clôturées/en pause
     </label>
   </section>
 
@@ -139,12 +147,26 @@
     <p class="text-[11px] text-ink/40 px-3 py-2 bg-white">📍 Seules les annonces avec une adresse choisie via les suggestions (pas en saisie libre) apparaissent sur la carte.</p>
   </section>
 
-  <!-- Facettes -->
-  <section class="mt-3 space-y-2">
-    <div id="facet-type" class="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
-    <div id="facet-cat" class="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
-    <div id="facet-zone" class="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
-  </section>
+  <!-- Panneau de filtres (façon menu latéral site marchand) -->
+  <div id="filters-backdrop" class="hidden fixed inset-0 bg-ink/50 z-40"></div>
+  <aside id="filters-drawer" class="hidden fixed top-0 left-0 bottom-0 z-50 w-[85vw] max-w-xs bg-warm-50 shadow-xl overflow-y-auto">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-sand/60 bg-white sticky top-0">
+      <h3 class="font-black uppercase tracking-tight text-sm">Filtres</h3>
+      <button id="btn-close-filters" class="text-ink/50 hover:text-ink text-xl leading-none px-1" aria-label="Fermer les filtres">×</button>
+    </div>
+    <div class="px-4 py-3">
+      <button id="btn-reset-filters" class="text-xs font-bold uppercase text-urgent underline mb-3">Réinitialiser tous les filtres</button>
+
+      <h4 class="font-mono text-[10px] uppercase tracking-widest text-ink/40 mt-3 mb-1.5">Type</h4>
+      <div id="facet-type" class="flex flex-col gap-1"></div>
+
+      <h4 class="font-mono text-[10px] uppercase tracking-widest text-ink/40 mt-4 mb-1.5">Catégorie</h4>
+      <div id="facet-cat" class="flex flex-col gap-1"></div>
+
+      <h4 class="font-mono text-[10px] uppercase tracking-widest text-ink/40 mt-4 mb-1.5">Zone</h4>
+      <div id="facet-zone" class="flex flex-col gap-1"></div>
+    </div>
+  </aside>
 
   <!-- Fil d'annonces -->
   <div class="flex items-center gap-2 mt-6 mb-1">
@@ -238,7 +260,8 @@
         </div>
         <div>
           <label for="f-tel" class="block text-xs font-bold uppercase tracking-wide text-ink/60 mb-1">Téléphone</label>
-          <input id="f-tel" required type="tel" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+          <input id="f-tel" required type="tel" inputmode="tel" placeholder="06 12 34 56 78 ou +33…" class="w-full rounded-md border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+          <p id="f-tel-error" class="hidden text-[11px] text-urgent font-semibold mt-1">Numéro invalide (10 chiffres, ou +33 suivi de 9 chiffres)</p>
         </div>
       </div>
 
@@ -270,14 +293,14 @@
 
 <footer class="max-w-2xl mx-auto w-full px-4 py-6 text-center text-[11px] text-ink/40 leading-relaxed">
   Site citoyen d'entraide, non affilié aux services officiels. En cas de doute, suivez toujours les consignes de la préfecture et des secours.
-  <br>Fait avec ❤️ pour la solidarité entre voisins.
+  <br>Fait avec ❤️, pour soutien et idées d'améliorations : <a href="mailto:contact@evoshifting.com" class="underline">contact@evoshifting.com</a>
   <br><button id="btn-forget-me" class="underline mt-1">Effacer mes informations enregistrées sur cet appareil</button>
 </footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=10"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

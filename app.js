@@ -33,9 +33,12 @@ const CATEGORIES = {
 };
 
 const STATUTS = {
+  // Clé interne "pourvu" conservée pour rester compatible avec les règles de
+  // sécurité Firestore déjà publiées (qui autorisent explicitement cette
+  // valeur) — seul le libellé affiché change, en "Clôturé" plus clair.
   ouvert: { label: 'Ouvert', icon: '🟢' },
   pause:  { label: 'En pause', icon: '⏸️' },
-  pourvu: { label: 'Pourvu', icon: '✅' },
+  pourvu: { label: 'Clôturé', icon: '🔒' },
 };
 
 /* =====================================================================
@@ -275,6 +278,49 @@ const el = (id) => {
 const importBanner = el('import-banner');
 const statsBar = el('stats-bar');
 
+/* =====================================================================
+   DÉTECTION NAVIGATEUR INTÉGRÉ (WhatsApp, Instagram, Facebook, LINE...)
+   -----------------------------------------------------------------------
+   Diagnostic établi le 24/07 : Firestore ne fonctionne pas de façon
+   fiable dans ces navigateurs bridés (webviews d'applications), même
+   quand Safari/Chrome classiques fonctionnent normalement sur le même
+   appareil — confirmé en testant depuis le navigateur intégré de
+   WhatsApp (visible via "◀ WhatsApp" en haut de l'écran) : aucune
+   confirmation serveur obtenue, même après 20+ secondes, alors que la
+   même page dans Safari classique finit par réussir. Comme le site est
+   volontairement partagé via WhatsApp, ce cas n'est PAS un cas limite —
+   c'est le chemin d'arrivée principal pour beaucoup de visiteurs, d'où
+   cette bannière plutôt qu'un correctif silencieux (qui n'existe pas :
+   il n'y a pas d'API JS pour forcer l'ouverture du vrai navigateur
+   depuis une webview iOS/Android).
+===================================================================== */
+
+function detectInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  // Signatures connues et fiables (Android inclut le nom de l'appli dans l'UA)
+  if (/\b(WhatsApp|FBAN|FBAV|Instagram|Line\/|MicroMessenger|Twitter|TikTok)\b/i.test(ua)) return true;
+  // Heuristique iOS : les navigateurs légitimes (Safari, Chrome iOS, Firefox
+  // iOS) ont toujours un jeton distinctif dans l'UA (Safari/, CriOS/, FxiOS/,
+  // EdgiOS/) ; beaucoup de webviews d'applications (dont WhatsApp iOS) ne
+  // l'ont pas, tout en se présentant comme un iPhone/iPad WebKit classique.
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const hasKnownBrowserToken = /Safari\/|CriOS\/|FxiOS\/|EdgiOS\/|OPiOS\//.test(ua);
+  if (isIOS && !hasKnownBrowserToken) return true;
+  return false;
+}
+
+function initInAppBannerCheck() {
+  const KEY = 'uei_inapp_banner_dismissed';
+  if (!detectInAppBrowser() || sessionStorage.getItem(KEY) === '1') return;
+  const banner = el('inapp-banner');
+  banner.classList.remove('hidden');
+  el('btn-close-inapp-banner').addEventListener('click', () => {
+    banner.classList.add('hidden');
+    try { sessionStorage.setItem(KEY, '1'); } catch {}
+  });
+}
+initInAppBannerCheck();
+
 const btnDemander = el('btn-demander');
 const btnProposer = el('btn-proposer');
 const modalBackdrop = el('modal-backdrop');
@@ -306,6 +352,38 @@ const mapView = el('map-view');
 const mapContainer = el('map-container');
 const btnGeoloc = el('btn-geoloc');
 const chkHideResolved = el('chk-hide-resolved');
+
+/* =====================================================================
+   PANNEAU DE FILTRES (menu latéral façon site marchand)
+===================================================================== */
+
+const btnOpenFilters = el('btn-open-filters');
+const btnCloseFilters = el('btn-close-filters');
+const filtersDrawer = el('filters-drawer');
+const filtersBackdrop = el('filters-backdrop');
+const btnResetFilters = el('btn-reset-filters');
+const filtersActiveCount = el('filters-active-count');
+
+function openFiltersDrawer() {
+  filtersDrawer.classList.remove('hidden');
+  filtersBackdrop.classList.remove('hidden');
+  requestAnimationFrame(() => filtersDrawer.classList.add('drawer-open'));
+}
+function closeFiltersDrawer() {
+  filtersDrawer.classList.remove('drawer-open');
+  setTimeout(() => {
+    filtersDrawer.classList.add('hidden');
+    filtersBackdrop.classList.add('hidden');
+  }, 250);
+}
+btnOpenFilters.addEventListener('click', openFiltersDrawer);
+btnCloseFilters.addEventListener('click', closeFiltersDrawer);
+filtersBackdrop.addEventListener('click', closeFiltersDrawer);
+btnResetFilters.addEventListener('click', () => {
+  filterType = 'all'; filterCat = 'all'; filterZone = 'all';
+  currentPage = 1;
+  renderFeed();
+});
 
 /* =====================================================================
    IDENTITÉ (mémorisée pour préremplir le formulaire, jamais bloquante)
@@ -413,10 +491,59 @@ function whatsappLink(a) {
    tenu des AUTRES filtres déjà actifs).
 ===================================================================== */
 
+/* =====================================================================
+   RECHERCHE — tolérance aux fautes de frappe façon Algolia/Elasticsearch
+   -----------------------------------------------------------------------
+   Règles appliquées (approximation légère, sans vrai moteur de recherche
+   côté serveur puisque le site est 100% statique) :
+   1. Insensible aux accents et à la casse ("café" trouve "cafe").
+   2. Recherche par mot : chaque mot tapé doit correspondre à AU MOINS un
+      mot de l'annonce (description, ville, quartier, catégorie).
+   3. Correspondance exacte en sous-chaîne toujours acceptée en priorité
+      ("chambre" trouve "chambres").
+   4. Tolérance aux fautes de frappe pour les mots de 4 lettres ou plus :
+      1 caractère d'écart toléré (ajout/suppression/substitution) pour les
+      mots de 4 à 7 lettres, 2 caractères pour les mots plus longs — ce
+      sont exactement les seuils par défaut d'Algolia (typoTolerance).
+      Les mots de moins de 4 lettres n'ont aucune tolérance (trop de
+      faux positifs sinon, ex. "lit" ↔ "lot").
+===================================================================== */
+
+function normalizeText(s) {
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+function wordMatchesFuzzy(hayWord, qWord) {
+  if (hayWord.includes(qWord)) return true;
+  if (qWord.length < 4) return false;
+  const maxDist = qWord.length <= 7 ? 1 : 2;
+  if (Math.abs(hayWord.length - qWord.length) <= maxDist && levenshtein(hayWord, qWord) <= maxDist) return true;
+  return false;
+}
+
 function matchesSearch(a, q) {
   if (!q) return true;
-  const hay = `${a.description} ${a.commune} ${a.quartier || ''} ${(CATEGORIES[a.categorie] || {}).label || ''}`.toLowerCase();
-  return hay.includes(q.toLowerCase());
+  const hay = normalizeText(`${a.description} ${a.commune} ${a.quartier || ''} ${(CATEGORIES[a.categorie] || {}).label || ''}`);
+  const qWords = normalizeText(q).split(/[^a-z0-9]+/).filter(Boolean);
+  if (!qWords.length) return true;
+  const hayWords = hay.split(/[^a-z0-9]+/).filter(Boolean);
+  return qWords.every(qw => hay.includes(qw) || hayWords.some(hw => wordMatchesFuzzy(hw, qw)));
 }
 
 function filteredExcept(list, exceptDim) {
@@ -428,10 +555,16 @@ function filteredExcept(list, exceptDim) {
   });
 }
 
-function chip(label, count, active, attrs) {
-  return `<button ${attrs} class="filter-btn shrink-0 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide border flex items-center gap-1.5" data-active="${active}">
-    ${label} <span class="facet-count">${count}</span>
+function facetRow(label, count, active, attrs) {
+  return `<button ${attrs} class="facet-row" data-active="${active}">
+    <span>${label}</span><span class="facet-count">${count}</span>
   </button>`;
+}
+
+function updateFiltersActiveBadge() {
+  const n = (filterType !== 'all' ? 1 : 0) + (filterCat !== 'all' ? 1 : 0) + (filterZone !== 'all' ? 1 : 0);
+  if (n > 0) { filtersActiveCount.textContent = n; filtersActiveCount.classList.remove('hidden'); }
+  else { filtersActiveCount.classList.add('hidden'); }
 }
 
 function renderFacets(all, searchFiltered) {
@@ -440,24 +573,24 @@ function renderFacets(all, searchFiltered) {
   const cBesoin = byType.filter(a => a.type === 'besoin').length;
   const cOffre = byType.filter(a => a.type === 'offre').length;
   facetType.innerHTML =
-    chip('Tout', byType.length, filterType === 'all', `data-filter-type="all"`) +
-    chip('🆘 Cherche', cBesoin, filterType === 'besoin', `data-filter-type="besoin"`) +
-    chip('🏡 Propose', cOffre, filterType === 'offre', `data-filter-type="offre"`);
+    facetRow('Tout', byType.length, filterType === 'all', `data-filter-type="all"`) +
+    facetRow('🆘 Cherche', cBesoin, filterType === 'besoin', `data-filter-type="besoin"`) +
+    facetRow('🏡 Propose', cOffre, filterType === 'offre', `data-filter-type="offre"`);
 
   // -- Catégorie --
   const byCat = filteredExcept(searchFiltered, 'cat');
   facetCat.innerHTML =
-    chip('Toutes cat.', byCat.length, filterCat === 'all', `data-filter-cat="all"`) +
+    facetRow('Toutes catégories', byCat.length, filterCat === 'all', `data-filter-cat="all"`) +
     Object.entries(CATEGORIES).map(([key, c]) =>
-      chip(`${c.icon} ${c.label}`, byCat.filter(a => a.categorie === key).length, filterCat === key, `data-filter-cat="${key}"`)
+      facetRow(`${c.icon} ${c.label}`, byCat.filter(a => a.categorie === key).length, filterCat === key, `data-filter-cat="${key}"`)
     ).join('');
 
   // -- Zone (dynamique, construite à partir des communes réellement utilisées) --
   const byZone = filteredExcept(searchFiltered, 'zone');
   const zones = [...new Set(all.map(a => a.commune))].sort((a, b) => a.localeCompare(b, 'fr'));
   facetZone.innerHTML =
-    chip('📍 Toutes zones', byZone.length, filterZone === 'all', `data-filter-zone="all"`) +
-    zones.map(z => chip(escapeHTML(z), byZone.filter(a => a.commune === z).length, filterZone === z, `data-filter-zone="${escapeHTML(z)}"`)).join('');
+    facetRow('📍 Toutes zones', byZone.length, filterZone === 'all', `data-filter-zone="all"`) +
+    zones.map(z => facetRow(escapeHTML(z), byZone.filter(a => a.commune === z).length, filterZone === z, `data-filter-zone="${escapeHTML(z)}"`)).join('');
 
   facetType.querySelectorAll('[data-filter-type]').forEach(btn => {
     btn.addEventListener('click', () => { filterType = btn.getAttribute('data-filter-type'); currentPage = 1; renderFeed(); });
@@ -468,6 +601,8 @@ function renderFacets(all, searchFiltered) {
   facetZone.querySelectorAll('[data-filter-zone]').forEach(btn => {
     btn.addEventListener('click', () => { filterZone = btn.getAttribute('data-filter-zone'); currentPage = 1; renderFeed(); });
   });
+
+  updateFiltersActiveBadge();
 }
 
 /* =====================================================================
@@ -949,6 +1084,17 @@ btnProposer.addEventListener('click', () => openModal('offre'));
 btnCloseModal.addEventListener('click', closeModal);
 modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
+function validatePhone(raw) {
+  const cleaned = (raw || '').trim().replace(/[\s.\-()]/g, '');
+  if (/^\+33[1-9]\d{8}$/.test(cleaned)) return true; // +33 suivi de 9 chiffres (sans le 0 initial)
+  const digitsOnly = cleaned.replace(/^\+/, '').replace(/\D/g, '');
+  return digitsOnly.length >= 10;
+}
+
+const telInput = el('f-tel');
+const telError = el('f-tel-error');
+telInput.addEventListener('input', () => telError.classList.add('hidden'));
+
 annonceForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const type = annonceForm.querySelector('input[name="type"]:checked')?.value;
@@ -966,6 +1112,13 @@ annonceForm.addEventListener('submit', (e) => {
     formError.classList.remove('hidden');
     return;
   }
+
+  if (!validatePhone(contactTel)) {
+    telError.classList.remove('hidden');
+    telInput.focus();
+    return;
+  }
+  telError.classList.add('hidden');
 
   setIdentity(contactPrenom, contactTel);
   const annonce = addAnnonce({ type, categorie, commune, quartier, description, contactPrenom, contactTel, lat, lon });
