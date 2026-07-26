@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modération — Urgence Entraide Incendie</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F9FAFB; color: #111827; margin: 0; padding: 20px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.sub { color: #6B7280; font-size: 13px; margin: 0 0 20px; }
+  #gate { max-width: 360px; margin: 60px auto; text-align: center; }
+  #gate input { width: 100%; padding: 12px 14px; font-size: 16px; border: 1px solid #E5E7EB; border-radius: 10px; margin: 12px 0; }
+  #gate button, .btn { background: #111827; color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  #gate .err { color: #DC2626; font-size: 13px; min-height: 18px; }
+  #app { display: none; max-width: 900px; margin: 0 auto; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button { padding: 8px 14px; border-radius: 999px; border: 1px solid #E5E7EB; background: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .tabs button[data-active="true"] { background: #111827; color: #fff; border-color: #111827; }
+  .item { background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .item .meta { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+  .item .body { font-size: 14.5px; }
+  .item .body strong { display: block; }
+  .del-btn { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .del-btn:hover { background: #DC2626; color: #fff; }
+  .empty { text-align: center; color: #9CA3AF; padding: 40px 0; }
+  .refresh { margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>🛡️ Modération</h1>
+  <p class="sub">Réservé à l'administrateur du site.</p>
+  <input id="pass-input" type="password" placeholder="Mot de passe" autofocus>
+  <br>
+  <button id="btn-unlock">Déverrouiller</button>
+  <p class="err" id="gate-error"></p>
+</div>
+
+<div id="app">
+  <h1>🛡️ Modération — Urgence Entraide Incendie</h1>
+  <p class="sub">Suppression immédiate et définitive côté serveur. Recharge la page pour rafraîchir la liste.</p>
+  <div class="tabs">
+    <button id="tab-annonces" data-active="true">Annonces (<span id="count-annonces">…</span>)</button>
+    <button id="tab-soutien" data-active="false">Messages de soutien (<span id="count-soutien">…</span>)</button>
+  </div>
+  <button class="btn refresh" id="btn-refresh">🔄 Rafraîchir</button>
+  <div id="list"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js?v=1"></script>
+<script>
+/* =====================================================================
+   PROTECTION PAR MOT DE PASSE — IMPORTANT À COMPRENDRE :
+   Ceci est une protection de confort (dissuasion), PAS une vraie sécurité.
+   Le mot de passe n'est jamais transmis à un serveur pour vérification ;
+   on compare juste son empreinte SHA-256 à celle stockée ci-dessous. Une
+   personne qui lit le code source de cette page ET connaît un minimum le
+   sujet pourrait théoriquement contourner cette page — mais elle ne
+   pourrait de toute façon rien faire de plus que ce que permettent déjà
+   les règles Firestore (lecture/suppression publiques, un choix assumé
+   pour un site sans compte utilisateur). Cette page sert avant tout à
+   RENDRE FACILE la modération pour toi, pas à empêcher un attaquant
+   déterminé — change le mot de passe ci-dessous avant de partager le
+   lien de cette page à qui que ce soit d'autre que toi.
+
+   Mot de passe par défaut : "moderation2026" — CHANGE-LE :
+   1. Choisis un nouveau mot de passe
+   2. Ouvre la console du navigateur sur n'importe quelle page HTTPS et tape :
+      crypto.subtle.digest('SHA-256', new TextEncoder().encode('TON_MOT_DE_PASSE')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+   3. Remplace la valeur de PASSWORD_HASH ci-dessous par le résultat affiché
+===================================================================== */
+const PASSWORD_HASH = '9846ccadf9c2985a3d9f00842b976f2e9b1c314e1788fc963f0349b7d21689bd';
+// ↑ empreinte de "moderation2026" — À CHANGER (voir instructions ci-dessus)
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+document.getElementById('btn-unlock').addEventListener('click', unlock);
+document.getElementById('pass-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
+
+async function unlock() {
+  const val = document.getElementById('pass-input').value;
+  const hash = await sha256(val);
+  if (hash === PASSWORD_HASH) {
+    sessionStorage.setItem('uei_mod_unlocked', '1');
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initModeration();
+  } else {
+    document.getElementById('gate-error').textContent = 'Mot de passe incorrect.';
+  }
+}
+
+if (sessionStorage.getItem('uei_mod_unlocked') === '1') {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initModeration();
+}
+
+let db, currentTab = 'annonces';
+let cacheAnnonces = [], cacheSoutien = [];
+
+function initModeration() {
+  if (!window.UEI_FIREBASE_CONFIG || window.UEI_FIREBASE_CONFIG.apiKey === 'REMPLACE_MOI') {
+    document.getElementById('list').innerHTML = '<p class="empty">⚠️ firebase-config.js non configuré.</p>';
+    return;
+  }
+  try {
+    firebase.initializeApp(window.UEI_FIREBASE_CONFIG);
+    db = firebase.firestore();
+  } catch (e) { /* déjà initialisé, ignorer */ }
+  loadAll();
+  document.getElementById('btn-refresh').addEventListener('click', loadAll);
+  document.getElementById('tab-annonces').addEventListener('click', () => switchTab('annonces'));
+  document.getElementById('tab-soutien').addEventListener('click', () => switchTab('soutien'));
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-annonces').setAttribute('data-active', tab === 'annonces');
+  document.getElementById('tab-soutien').setAttribute('data-active', tab === 'soutien');
+  render();
+}
+
+async function loadAll() {
+  document.getElementById('list').innerHTML = '<p class="empty">Chargement…</p>';
+  try {
+    const [snapA, snapS] = await Promise.all([
+      db.collection('annonces').orderBy('createdAt', 'desc').limit(300).get(),
+      db.collection('soutien').orderBy('createdAt', 'desc').limit(300).get(),
+    ]);
+    cacheAnnonces = snapA.docs.map(d => d.data());
+    cacheSoutien = snapS.docs.map(d => d.data());
+    document.getElementById('count-annonces').textContent = cacheAnnonces.length;
+    document.getElementById('count-soutien').textContent = cacheSoutien.length;
+    render();
+  } catch (err) {
+    document.getElementById('list').innerHTML = '<p class="empty">❌ Échec du chargement : ' + escapeHTML(err.message) + '</p>';
+  }
+}
+
+function escapeHTML(str = '') {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function render() {
+  const list = document.getElementById('list');
+  const items = currentTab === 'annonces' ? cacheAnnonces : cacheSoutien;
+  if (!items.length) { list.innerHTML = '<p class="empty">Rien ici.</p>'; return; }
+  list.innerHTML = items.map(it => {
+    if (currentTab === 'annonces') {
+      return `<div class="item">
+        <div>
+          <div class="meta">${escapeHTML(it.type || '')} · ${escapeHTML(it.commune || '')} · ${new Date(it.createdAt).toLocaleString('fr-FR')}</div>
+          <div class="body"><strong>${escapeHTML(it.contactPrenom || '')} — ${escapeHTML(it.contactTel || '')}</strong>${escapeHTML(it.description || '')}</div>
+        </div>
+        <button class="del-btn" data-col="annonces" data-id="${escapeHTML(it.id)}">🗑️ Supprimer</button>
+      </div>`;
+    }
+    return `<div class="item">
+      <div>
+        <div class="meta">${escapeHTML(it.pseudo || 'Anonyme')} · ${new Date(it.createdAt).toLocaleString('fr-FR')}</div>
+        <div class="body">${escapeHTML(it.message || '')}</div>
+      </div>
+      <button class="del-btn" data-col="soutien" data-id="${escapeHTML(it.id)}">🗑️ Supprimer</button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Supprimer définitivement ce contenu ?')) return;
+      const col = btn.getAttribute('data-col');
+      const id = btn.getAttribute('data-id');
+      btn.disabled = true;
+      btn.textContent = '…';
+      try {
+        await db.collection(col).doc(id).delete();
+        if (col === 'annonces') cacheAnnonces = cacheAnnonces.filter(a => a.id !== id);
+        else cacheSoutien = cacheSoutien.filter(a => a.id !== id);
+        document.getElementById('count-annonces').textContent = cacheAnnonces.length;
+        document.getElementById('count-soutien').textContent = cacheSoutien.length;
+        render();
+      } catch (err) {
+        alert('Échec de la suppression : ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '🗑️ Supprimer';
+      }
+    });
+  });
+}
+</script>
+</body>
+</html>
