@@ -1234,15 +1234,24 @@ btnShareWhatsappNow.addEventListener('click', () => {
 ===================================================================== */
 
 function buildShareLink(a) {
-  const payload = {
-    id: a.id, type: a.type, categorie: a.categorie, commune: a.commune,
-    quartier: a.quartier || '', description: a.description,
-    contactPrenom: a.contactPrenom, contactTel: a.contactTel, createdAt: a.createdAt,
-    statut: a.statut || 'ouvert', lat: a.lat ?? null, lon: a.lon ?? null,
-  };
-  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
   const base = location.origin + location.pathname;
-  return `${base}?a=${encoded}`;
+  // Si Firestore est connecté (cas normal aujourd'hui que la synchronisation
+  // est fiable), l'annonce est déjà visible pour quiconque ouvre le site —
+  // pas besoin d'un lien à rallonge qui a l'air suspect dans WhatsApp.
+  // On ne revient à l'ancien mécanisme (données encodées dans l'URL) que
+  // si Firestore est indisponible : c'est alors le SEUL moyen pour
+  // l'annonce de circuler malgré tout.
+  if (!db) {
+    const payload = {
+      id: a.id, type: a.type, categorie: a.categorie, commune: a.commune,
+      quartier: a.quartier || '', description: a.description,
+      contactPrenom: a.contactPrenom, contactTel: a.contactTel, createdAt: a.createdAt,
+      statut: a.statut || 'ouvert', lat: a.lat ?? null, lon: a.lon ?? null,
+    };
+    const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+    return `${base}?a=${encoded}`;
+  }
+  return base;
 }
 
 function tryImportFromURL() {

@@ -1,0 +1,13 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Urgence Entraide Incendie">
+  <defs>
+    <linearGradient id="uei-tile-fav" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9D5C"/>
+      <stop offset=".52" stop-color="#F26D2B"/>
+      <stop offset="1" stop-color="#E14B10"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#uei-tile-fav)" d="M22 4h20c8.5 0 12.8 0 15.4 2.6C60 9.2 60 13.5 60 22v20c0 8.5 0 12.8-2.6 15.4C54.8 60 50.5 60 42 60H22c-8.5 0-12.8 0-15.4-2.6C4 54.8 4 50.5 4 42V22c0-8.5 0-12.8 2.6-15.4C9.2 4 13.5 4 22 4Z"/>
+  <g transform="translate(8 12) scale(2)">
+    <path fill="#fff" fill-rule="evenodd" clip-rule="evenodd" d="M12 2.3c3.4 3.5 5.6 6.6 5.6 10.4a5.6 5.6 0 0 1-11.2 0c0-1.6.5-3 1-4 .6 1.2 1.4 1.8 2.4 1.9-1.5-3.3.4-6.5 2.2-8.3Zm0 14.6c-2-1.5-3.4-2.8-3.4-4.4a1.75 1.75 0 0 1 3.4-.5 1.75 1.75 0 0 1 3.4.5c0 1.6-1.4 2.9-3.4 4.4Z"/>
+  </g>
+</svg>
