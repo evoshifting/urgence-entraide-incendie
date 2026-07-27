@@ -15,7 +15,7 @@ const CACHE_NAME = 'uei-shell-v24';
 const SHELL_FILES = [
   './',
   './index.html',
-  './app.js?v=19',
+  './app.js?v=20',
   './style.css?v=5',
   './tailwind-built.css?v=5',
   './firebase-config.js?v=1',
