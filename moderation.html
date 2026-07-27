@@ -98,14 +98,14 @@ async function unlock() {
   }
 }
 
+let db, currentTab = 'annonces';
+let cacheAnnonces = [], cacheSoutien = [];
+
 if (sessionStorage.getItem('uei_mod_unlocked') === '1') {
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   initModeration();
 }
-
-let db, currentTab = 'annonces';
-let cacheAnnonces = [], cacheSoutien = [];
 
 function initModeration() {
   if (!window.UEI_FIREBASE_CONFIG || window.UEI_FIREBASE_CONFIG.apiKey === 'REMPLACE_MOI') {
