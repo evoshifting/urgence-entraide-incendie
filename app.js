@@ -47,6 +47,15 @@ const STATUTS = {
 
 let cache = [];          // liste actuellement affichée (source de vérité pour le rendu)
 let db = null;
+let analytics = null;
+
+// Utilitaire de log sécurisé : n'échoue jamais, même si Analytics n'a pas
+// pu s'initialiser (bloqueur de pub...) — un simple no-op dans ce cas.
+function logEvent(name, params) {
+  try {
+    if (analytics) analytics.logEvent(name, params);
+  } catch (err) { /* silencieux, volontairement */ }
+}
 let firebaseReady = false;
 
 function loadLocalCache() {
@@ -182,6 +191,18 @@ function initSync() {
       return;
     }
 
+    // Analytics est optionnel et fréquemment bloqué (bloqueurs de pub,
+    // navigateurs orientés vie privée) — on l'active "en bonus", sans
+    // jamais laisser un échec ici perturber le reste du site (annonces,
+    // synchronisation...), qui doit continuer à fonctionner sans lui.
+    try {
+      if (typeof firebase.analytics === 'function' && cfg.measurementId) {
+        analytics = firebase.analytics();
+      }
+    } catch (err) {
+      console.warn('[UEI] Analytics indisponible (bloqueur de pub ?), pas grave, le reste du site continue', err);
+    }
+
     // Premier sondage : on attend son résultat (max 4s, le contenu local
     // est déjà affiché entre-temps) avant de laisser l'app continuer,
     // pour pouvoir importer un lien partagé une fois qu'on sait si on est
@@ -218,6 +239,7 @@ function addAnnonce(data) {
   cache = [annonce, ...cache];
   saveLocalCache(cache);
   renderFeed();
+  logEvent('annonce_publiee', { type: annonce.type, categorie: annonce.categorie });
   // On tente l'écriture dès que `db` existe (Firebase configuré) : une
   // écriture .set() ponctuelle s'est révélée fiable dans nos tests
   // (contrairement à l'écoute temps réel), même si elle peut prendre
@@ -758,6 +780,11 @@ function renderFeed() {
 }
 
 feed.addEventListener('click', async (e) => {
+  const telLink = e.target.closest('a[href^="tel:"]');
+  if (telLink) logEvent('appel_clique', {});
+  const waLink = e.target.closest('a[href*="wa.me"]');
+  if (waLink) logEvent('partage_clique', {});
+
   const copyBtn = e.target.closest('.btn-copy');
   if (copyBtn) {
     const tel = copyBtn.getAttribute('data-copy');
@@ -1541,6 +1568,7 @@ function addSoutienMessage(message, pseudo, lieu) {
   saveSoutienLocal(soutienCache);
   renderSoutienWall();
   renderTicker();
+  logEvent('soutien_publie', {});
   if (db) {
     db.collection('soutien').doc(m.id).set(m).catch((err) => {
       console.warn('[UEI] Échec envoi message de soutien, restera local seulement', err);

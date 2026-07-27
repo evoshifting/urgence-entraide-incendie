@@ -71,5 +71,6 @@ window.UEI_FIREBASE_CONFIG = {
   projectId: "urgence-entraide-incendie",
   storageBucket: "urgence-entraide-incendie.firebasestorage.app",
   messagingSenderId: "917306061922",
-  appId: "1:917306061922:web:b763dd23b7a7bfdefb4d3b"
+  appId: "1:917306061922:web:b763dd23b7a7bfdefb4d3b",
+  measurementId: "G-2VFJJJ2J88"
 };
