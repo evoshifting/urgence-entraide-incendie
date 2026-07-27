@@ -377,6 +377,51 @@ btnForgetMe.addEventListener('click', () => {
 });
 
 /* =====================================================================
+   "GÉRER UNE ANNONCE" — retrouve la gestion (statut/suppression) d'une
+   annonce publiée depuis un autre appareil, ou une fenêtre de navigation
+   privée entre-temps fermée (la liste "mes annonces" est alors perdue,
+   irrémédiablement, puisqu'elle vit dans le stockage local de cette
+   fenêtre-là uniquement). Vérification par numéro de téléphone : c'est
+   déjà la donnée publique affichée sur l'annonce elle-même, donc ça
+   n'expose rien de nouveau — simplement pratique, pas une authentification
+   forte.
+===================================================================== */
+
+const btnManageMine = el('btn-manage-mine');
+const manageModalBackdrop = el('manage-modal-backdrop');
+const btnCloseManageModal = el('btn-close-manage-modal');
+const manageForm = el('manage-form');
+const manageTelInput = el('manage-tel');
+const manageError = el('manage-error');
+
+function openManageModal() {
+  manageForm.reset();
+  manageError.classList.add('hidden');
+  manageModalBackdrop.classList.remove('hidden');
+}
+function closeManageModal() { manageModalBackdrop.classList.add('hidden'); }
+
+btnManageMine.addEventListener('click', openManageModal);
+btnCloseManageModal.addEventListener('click', closeManageModal);
+manageModalBackdrop.addEventListener('click', (e) => { if (e.target === manageModalBackdrop) closeManageModal(); });
+
+manageForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const target = cleanTel(manageTelInput.value);
+  if (!target) return;
+  const matches = cache.filter(a => cleanTel(a.contactTel) === target);
+  if (!matches.length) {
+    manageError.classList.remove('hidden');
+    return;
+  }
+  manageError.classList.add('hidden');
+  matches.forEach(a => markMine(a.id));
+  closeManageModal();
+  renderFeed();
+  showToast(`${matches.length} annonce${matches.length > 1 ? 's' : ''} retrouvée${matches.length > 1 ? 's' : ''} — gérable${matches.length > 1 ? 's' : ''} depuis le fil`);
+});
+
+/* =====================================================================
    UTILITAIRES
 ===================================================================== */
 
@@ -1033,6 +1078,7 @@ function openModal(presetType) {
   communeLon.value = '';
   hideCommuneSuggestions();
   hideQuartierSuggestions();
+  descriptionCharCount.textContent = '0';
   const identity = getIdentity();
   if (identity) {
     el('f-prenom').value = identity.prenom;
@@ -1071,6 +1117,12 @@ function validatePhone(raw) {
 const telInput = el('f-tel');
 const telError = el('f-tel-error');
 telInput.addEventListener('input', () => telError.classList.add('hidden'));
+
+const descriptionInput = el('f-description');
+const descriptionCharCount = el('description-char-count');
+descriptionInput.addEventListener('input', () => {
+  descriptionCharCount.textContent = String(descriptionInput.value.length);
+});
 
 annonceForm.addEventListener('submit', (e) => {
   e.preventDefault();

@@ -19,6 +19,9 @@
   .tabs button { padding: 8px 14px; border-radius: 999px; border: 1px solid #E5E7EB; background: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
   .tabs button[data-active="true"] { background: #111827; color: #fff; border-color: #111827; }
   .item { background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .statut-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .statut-btn-mod { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid #E5E7EB; background: #F9FAFB; color: #374151; cursor: pointer; }
+  .statut-btn-mod[data-active="true"] { background: #111827; border-color: #111827; color: #fff; }
   .item .meta { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
   .item .body { font-size: 14.5px; }
   .item .body strong { display: block; }
@@ -107,19 +110,36 @@ if (sessionStorage.getItem('uei_mod_unlocked') === '1') {
   initModeration();
 }
 
+let moderationListenersAttached = false;
+
 function initModeration() {
   if (!window.UEI_FIREBASE_CONFIG || window.UEI_FIREBASE_CONFIG.apiKey === 'REMPLACE_MOI') {
     document.getElementById('list').innerHTML = '<p class="empty">⚠️ firebase-config.js non configuré.</p>';
     return;
   }
   try {
-    firebase.initializeApp(window.UEI_FIREBASE_CONFIG);
+    // Vérification idiomatique (plutôt que de compter sur un try/catch pour
+    // avaler une erreur "app already exists") : si initModeration() est
+    // appelée deux fois (ex. auto-reconnexion + clic manuel), on réutilise
+    // l'app déjà initialisée au lieu de tenter de la recréer.
+    if (typeof firebase === 'undefined') throw new Error('Le SDK Firebase ne s\'est pas chargé (bloqueur de pub ? réseau ?)');
+    if (!firebase.apps.length) firebase.initializeApp(window.UEI_FIREBASE_CONFIG);
     db = firebase.firestore();
-  } catch (e) { /* déjà initialisé, ignorer */ }
+  } catch (e) {
+    // On affiche la VRAIE erreur au lieu de l'avaler silencieusement —
+    // sinon on ne voit que la conséquence plus tard ("db" vide) sans
+    // jamais connaître la cause réelle.
+    console.error('[Modération] Échec d\'initialisation Firebase', e);
+    document.getElementById('list').innerHTML = `<p class="empty">❌ Firebase indisponible : ${e.message}</p>`;
+    return;
+  }
   loadAll();
-  document.getElementById('btn-refresh').addEventListener('click', loadAll);
-  document.getElementById('tab-annonces').addEventListener('click', () => switchTab('annonces'));
-  document.getElementById('tab-soutien').addEventListener('click', () => switchTab('soutien'));
+  if (!moderationListenersAttached) {
+    moderationListenersAttached = true;
+    document.getElementById('btn-refresh').addEventListener('click', loadAll);
+    document.getElementById('tab-annonces').addEventListener('click', () => switchTab('annonces'));
+    document.getElementById('tab-soutien').addEventListener('click', () => switchTab('soutien'));
+  }
 }
 
 function switchTab(tab) {
@@ -150,16 +170,23 @@ function escapeHTML(str = '') {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+const STATUTS_MOD = { ouvert: '🟢 Ouvert', pause: '⏸️ En pause', pourvu: '🔒 Clôturé' };
+
 function render() {
   const list = document.getElementById('list');
   const items = currentTab === 'annonces' ? cacheAnnonces : cacheSoutien;
   if (!items.length) { list.innerHTML = '<p class="empty">Rien ici.</p>'; return; }
   list.innerHTML = items.map(it => {
     if (currentTab === 'annonces') {
+      const statut = it.statut || 'ouvert';
+      const statutBtns = Object.entries(STATUTS_MOD).map(([key, label]) =>
+        `<button class="statut-btn-mod" data-statut-id="${escapeHTML(it.id)}" data-statut-value="${key}" data-active="${statut === key}">${label}</button>`
+      ).join('');
       return `<div class="item">
         <div>
           <div class="meta">${escapeHTML(it.type || '')} · ${escapeHTML(it.commune || '')} · ${new Date(it.createdAt).toLocaleString('fr-FR')}</div>
           <div class="body"><strong>${escapeHTML(it.contactPrenom || '')} — ${escapeHTML(it.contactTel || '')}</strong>${escapeHTML(it.description || '')}</div>
+          <div class="statut-row">${statutBtns}</div>
         </div>
         <button class="del-btn" data-col="annonces" data-id="${escapeHTML(it.id)}">🗑️ Supprimer</button>
       </div>`;
@@ -172,6 +199,25 @@ function render() {
       <button class="del-btn" data-col="soutien" data-id="${escapeHTML(it.id)}">🗑️ Supprimer</button>
     </div>`;
   }).join('');
+
+  list.querySelectorAll('.statut-btn-mod').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-statut-id');
+      const statut = btn.getAttribute('data-statut-value');
+      const item = cacheAnnonces.find(a => a.id === id);
+      if (!item || item.statut === statut) return;
+      const prevStatut = item.statut;
+      item.statut = statut; // optimiste
+      render();
+      try {
+        await db.collection('annonces').doc(id).update({ statut });
+      } catch (err) {
+        item.statut = prevStatut; // annule si échec
+        alert('Échec de la mise à jour du statut : ' + err.message);
+        render();
+      }
+    });
+  });
 
   list.querySelectorAll('.del-btn').forEach(btn => {
     btn.addEventListener('click', async () => {

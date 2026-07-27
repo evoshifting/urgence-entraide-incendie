@@ -48,7 +48,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=8">
+<link rel="stylesheet" href="tailwind-built.css?v=9">
 <link rel="stylesheet" href="style.css?v=7">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
@@ -408,13 +408,37 @@
 <footer class="w-full max-w-[1120px] mx-auto px-4 py-6 text-center text-xs text-gray-400 leading-relaxed">
   Site citoyen d'entraide, non affilié aux services officiels. En cas de doute, suivez toujours les consignes de la préfecture et des secours.
   <br>Fait avec ❤️, pour soutien et idées d'améliorations : <a href="mailto:contact@evoshifting.com" class="underline">contact@evoshifting.com</a>
+  <br><button id="btn-manage-mine" class="underline mt-1 min-h-[44px]">Gérer une annonce que j'ai publiée (autre appareil ou navigation privée)</button>
   <br><button id="btn-forget-me" class="underline mt-1 min-h-[44px]">Effacer mes informations enregistrées sur cet appareil</button>
 </footer>
+
+<!-- Modale "Gérer une annonce" : retrouve la gestion (statut/suppression) d'une
+     annonce publiée depuis un autre appareil ou une fenêtre de navigation
+     privée fermée, en vérifiant le numéro de téléphone utilisé à la
+     publication (déjà public sur l'annonce elle-même, donc pas de nouvelle
+     donnée exposée). -->
+<div id="manage-modal-backdrop" class="hidden fixed inset-0 bg-ink/60 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative">
+    <span class="hazard-stripe absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl" aria-hidden="true"></span>
+    <div class="flex items-center justify-between mb-4 mt-1">
+      <h3 class="text-lg font-black uppercase tracking-tight">Gérer une annonce</h3>
+      <button id="btn-close-manage-modal" class="text-ink/40 hover:text-ink text-2xl leading-none px-2" aria-label="Fermer">×</button>
+    </div>
+    <p class="text-sm text-gray-500 mb-4">Entre le numéro de téléphone utilisé à la publication : si une ou plusieurs annonces correspondent, tu pourras à nouveau changer leur statut ou les supprimer depuis le fil, sur cet appareil.</p>
+    <form id="manage-form" class="space-y-3">
+      <input id="manage-tel" type="tel" inputmode="tel" required placeholder="06 12 34 56 78" class="w-full min-h-[52px] rounded-xl border border-sand px-4 text-base focus:outline-none focus:ring-2 focus:ring-solid">
+      <p id="manage-error" class="hidden text-xs text-urgent font-semibold">Aucune annonce trouvée avec ce numéro.</p>
+      <button type="submit" class="min-h-[52px] w-full bg-ink hover:bg-gray-800 active:scale-[0.98] transition text-white font-bold uppercase tracking-wide text-sm rounded-xl">
+        Retrouver mes annonces
+      </button>
+    </form>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
