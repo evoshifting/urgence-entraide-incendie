@@ -83,6 +83,10 @@ function setSyncStatus(state) {
 }
 
 const POLL_INTERVAL_MS = 12000;
+// Fenêtre de temps dans laquelle une annonce/un message locale(e) peut
+// encore être considéré(e) comme "en attente de synchronisation" plutôt
+// que "supprimé(e) intentionnellement depuis" (voir garde-fous plus bas).
+const MIGRATION_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 let pollTimer = null;
 let migrated = false;
 let localBeforeSync = [];
@@ -113,12 +117,26 @@ async function pollFirestore(isFirstPoll) {
 
     // Migration ascendante (une seule fois, après le tout premier sondage
     // réussi) : toute annonce créée localement avant que Firestore ne soit
-    // joignable est renvoyée vers le fil partagé. set(...,{merge:true}) est
-    // idempotent par id, donc sans risque même si l'annonce existe déjà.
+    // joignable est renvoyée vers le fil partagé.
+    //
+    // ⚠️ GARDE-FOUS CRITIQUES (bug corrigé le 27/07) : sans restriction,
+    // cette migration ressuscitait n'importe quelle annonce supprimée par
+    // un modérateur, dès qu'un appareil ayant encore l'ancienne version en
+    // cache local rechargeait la page — le sondage ne la trouvait plus sur
+    // le serveur, la prenait pour une "orpheline jamais synchronisée", et
+    // la renvoyait. On ne migre donc désormais QUE les annonces qui sont
+    // À LA FOIS (a) marquées "mienne" sur CET appareil (publiées ici, pas
+    // juste vues) ET (b) créées très récemment — le vrai scénario legitime
+    // étant "je viens de publier hors-ligne, ça n'a pas encore synchronisé".
+    // Une annonce plus ancienne, même absente du serveur, est supposée
+    // avoir été supprimée intentionnellement, jamais réinjectée.
     if (!migrated) {
       migrated = true;
       const knownIds = new Set(cache.map(a => a.id));
-      const orphans = localBeforeSync.filter(a => !knownIds.has(a.id));
+      const mineIds = getMineIds();
+      const orphans = localBeforeSync.filter(a =>
+        !knownIds.has(a.id) && mineIds.has(a.id) && (Date.now() - a.createdAt) < MIGRATION_WINDOW_MS
+      );
       if (orphans.length) {
         console.info(`[UEI] ${orphans.length} annonce(s) locale(s) migrée(s) vers le fil partagé.`);
         cache = [...orphans, ...cache].sort((a, b) => b.createdAt - a.createdAt);
@@ -1492,7 +1510,10 @@ async function pollSoutien(isFirst) {
       soutienMigrated = true;
       const localBefore = loadSoutienLocal();
       const knownIds = new Set(soutienCache.map(m => m.id));
-      const orphans = localBefore.filter(m => !knownIds.has(m.id));
+      // Même garde-fou que pour les annonces (voir pollFirestore) : ne
+      // migrer que les messages très récents, jamais un vieux message en
+      // cache qui pourrait avoir été supprimé intentionnellement depuis.
+      const orphans = localBefore.filter(m => !knownIds.has(m.id) && (Date.now() - m.createdAt) < MIGRATION_WINDOW_MS);
       if (orphans.length) {
         soutienCache = [...orphans, ...soutienCache].sort((a, b) => b.createdAt - a.createdAt);
         saveSoutienLocal(soutienCache);
