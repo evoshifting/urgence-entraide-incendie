@@ -48,8 +48,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=4">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="tailwind-built.css?v=5">
+<link rel="stylesheet" href="style.css?v=5">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
   // on préfère avertir clairement plutôt que laisser un site silencieusement
@@ -94,9 +94,36 @@
   <!-- ============================= COLONNE GAUCHE ============================= -->
   <div class="sidebar-col lg:sticky lg:top-16 pt-4 lg:pt-6">
 
-    <!-- Logo : nouvelle identité (flamme + cœur en espace négatif) -->
+    <!-- Logo : nouvelle identité (flamme + cœur en espace négatif), SVG inline
+         (pas <img>) pour pouvoir rejouer l'animation "braise vivante" à
+         chaque publication d'annonce (id="header-logo-svg", voir app.js). -->
     <a href="./" aria-label="Accueil — Urgence Entraide Incendie" class="flex items-center gap-3 mb-4 w-fit">
-      <img src="logo.svg?v=1" width="44" height="44" alt="" class="shrink-0">
+      <svg id="header-logo-svg" width="44" height="44" viewBox="0 0 64 64" style="overflow:visible" class="shrink-0" aria-hidden="true">
+        <defs>
+          <linearGradient id="uei-tile-hdr" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#FF9D5C"/><stop offset=".52" stop-color="#F26D2B"/><stop offset="1" stop-color="#E14B10"/>
+          </linearGradient>
+          <linearGradient id="uei-sheen-hdr" x1="32" y1="4" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <filter id="uei-shadow-hdr" x="-30%" y="-25%" width="160%" height="165%">
+            <feDropShadow dx="0" dy="2.5" stdDeviation="3.5" flood-color="#C63E08" flood-opacity=".26"/>
+          </filter>
+        </defs>
+        <g filter="url(#uei-shadow-hdr)">
+          <path fill="url(#uei-tile-hdr)" d="M22 4h20c8.5 0 12.8 0 15.4 2.6C60 9.2 60 13.5 60 22v20c0 8.5 0 12.8-2.6 15.4C54.8 60 50.5 60 42 60H22c-8.5 0-12.8 0-15.4-2.6C4 54.8 4 50.5 4 42V22c0-8.5 0-12.8 2.6-15.4C9.2 4 13.5 4 22 4Z"/>
+          <path fill="url(#uei-sheen-hdr)" d="M22 4h20c8.5 0 12.8 0 15.4 2.6C60 9.2 60 13.5 60 22v6H4v-6c0-8.5 0-12.8 2.6-15.4C9.2 4 13.5 4 22 4Z"/>
+        </g>
+        <g transform="translate(8 12) scale(2)" style="overflow:visible">
+          <circle class="uei-glow" cx="12" cy="12" r="10" fill="none" stroke="#FDBA74" stroke-width="1.4"/>
+          <g class="uei-flame">
+            <path fill="#fff" fill-rule="evenodd" clip-rule="evenodd" d="M12 2.3c3.4 3.5 5.6 6.6 5.6 10.4a5.6 5.6 0 0 1-11.2 0c0-1.6.5-3 1-4 .6 1.2 1.4 1.8 2.4 1.9-1.5-3.3.4-6.5 2.2-8.3Zm0 14.6c-2-1.5-3.4-2.8-3.4-4.4a1.75 1.75 0 0 1 3.4-.5 1.75 1.75 0 0 1 3.4.5c0 1.6-1.4 2.9-3.4 4.4Z"/>
+          </g>
+          <circle class="uei-ember e1" cx="10.5" cy="20" r=".7" fill="#FFD9A8"/>
+          <circle class="uei-ember e2" cx="13.5" cy="20" r=".5" fill="#FFD9A8"/>
+          <circle class="uei-ember e3" cx="12" cy="20" r=".6" fill="#FFD9A8"/>
+        </g>
+      </svg>
       <span class="leading-tight min-w-0">
         <span class="block text-lg font-extrabold uppercase tracking-tight text-gray-900 truncate">Urgence</span>
         <span class="block text-sm font-semibold text-gray-700 -mt-0.5 truncate">Entraide Incendie</span>
@@ -376,7 +403,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

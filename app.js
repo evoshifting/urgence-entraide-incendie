@@ -1106,8 +1106,108 @@ annonceForm.addEventListener('submit', (e) => {
   closeModal();
   currentPage = 1;
   renderFeed();
-  openShareModal(annonce);
+  replayLogoAnimation(headerLogoSvg);
+  openConfirmationOverlay(() => openShareModal(annonce));
 });
+
+/* =====================================================================
+   ANIMATION DE VALIDATION — logo "braise vivante" + confirmation plein
+   écran chaleureuse, jouée à chaque publication d'annonce réussie
+   (demande ou offre). Jamais en boucle au repos, jamais anxiogène.
+===================================================================== */
+
+const headerLogoSvg = el('header-logo-svg');
+
+// Rejoue l'animation CSS d'un SVG en repartant de zéro (retire la classe,
+// force un reflow, la remet) — sans ce forçage, réappliquer la même
+// classe ne redéclenche rien si elle était déjà présente.
+function replayLogoAnimation(svgEl) {
+  if (!svgEl) return;
+  svgEl.classList.remove('uei-anim');
+  void svgEl.getBoundingClientRect(); // force le reflow
+  svgEl.classList.add('uei-anim');
+}
+
+// Même structure que le logo du header, avec des identifiants de
+// dégradé/filtre distincts (des ids dupliqués entre deux <svg> présents
+// simultanément dans le DOM casseraient le rendu de l'un des deux).
+function overlayLogoSvgMarkup() {
+  return `<svg id="overlay-logo-svg" width="88" height="88" viewBox="0 0 64 64" style="overflow:visible" class="mx-auto mb-4" aria-hidden="true">
+    <defs>
+      <linearGradient id="uei-tile-ovl" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#FF9D5C"/><stop offset=".52" stop-color="#F26D2B"/><stop offset="1" stop-color="#E14B10"/>
+      </linearGradient>
+      <linearGradient id="uei-sheen-ovl" x1="32" y1="4" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="uei-shadow-ovl" x="-30%" y="-25%" width="160%" height="165%">
+        <feDropShadow dx="0" dy="2.5" stdDeviation="3.5" flood-color="#C63E08" flood-opacity=".26"/>
+      </filter>
+    </defs>
+    <g filter="url(#uei-shadow-ovl)">
+      <path fill="url(#uei-tile-ovl)" d="M22 4h20c8.5 0 12.8 0 15.4 2.6C60 9.2 60 13.5 60 22v20c0 8.5 0 12.8-2.6 15.4C54.8 60 50.5 60 42 60H22c-8.5 0-12.8 0-15.4-2.6C4 54.8 4 50.5 4 42V22c0-8.5 0-12.8 2.6-15.4C9.2 4 13.5 4 22 4Z"/>
+      <path fill="url(#uei-sheen-ovl)" d="M22 4h20c8.5 0 12.8 0 15.4 2.6C60 9.2 60 13.5 60 22v6H4v-6c0-8.5 0-12.8 2.6-15.4C9.2 4 13.5 4 22 4Z"/>
+    </g>
+    <g transform="translate(8 12) scale(2)" style="overflow:visible">
+      <circle class="uei-glow" cx="12" cy="12" r="10" fill="none" stroke="#FDBA74" stroke-width="1.4"/>
+      <g class="uei-flame">
+        <path fill="#fff" fill-rule="evenodd" clip-rule="evenodd" d="M12 2.3c3.4 3.5 5.6 6.6 5.6 10.4a5.6 5.6 0 0 1-11.2 0c0-1.6.5-3 1-4 .6 1.2 1.4 1.8 2.4 1.9-1.5-3.3.4-6.5 2.2-8.3Zm0 14.6c-2-1.5-3.4-2.8-3.4-4.4a1.75 1.75 0 0 1 3.4-.5 1.75 1.75 0 0 1 3.4.5c0 1.6-1.4 2.9-3.4 4.4Z"/>
+      </g>
+      <circle class="uei-ember e1" cx="10.5" cy="20" r=".7" fill="#FFD9A8"/>
+      <circle class="uei-ember e2" cx="13.5" cy="20" r=".5" fill="#FFD9A8"/>
+      <circle class="uei-ember e3" cx="12" cy="20" r=".6" fill="#FFD9A8"/>
+    </g>
+  </svg>`;
+}
+
+let confirmationOverlayEl = null;
+let confirmationTimer = null;
+
+// Confirmation chaleureuse plein écran : s'auto-ferme après ~2,2s ou au
+// clic, jamais empilée (une nouvelle validation remplace la précédente
+// et réinitialise le minuteur). onClose() s'exécute une seule fois,
+// qu'elle que soit la façon dont l'overlay se ferme.
+function openConfirmationOverlay(onClose) {
+  closeConfirmationOverlay(); // jamais deux overlays en même temps
+
+  const overlay = document.createElement('div');
+  overlay.className = 'uei-overlay';
+  overlay.setAttribute('role', 'presentation');
+  overlay.innerHTML = `
+    <div class="uei-card" role="status" aria-live="polite">
+      ${overlayLogoSvgMarkup()}
+      <div style="font-size:20px;font-weight:800;color:#111827;">Annonce publiée !</div>
+      <p style="margin-top:8px;font-size:15px;color:#6B7280;line-height:1.5;">Merci pour votre entraide. Votre annonce est maintenant visible par la communauté.</p>
+    </div>`;
+  document.body.appendChild(overlay);
+  confirmationOverlayEl = overlay;
+
+  let closed = false;
+  const finish = () => {
+    if (closed) return;
+    closed = true;
+    closeConfirmationOverlay();
+    if (onClose) onClose();
+  };
+
+  overlay.addEventListener('click', finish);
+  confirmationTimer = setTimeout(finish, 2200);
+
+  // Rejoue l'animation du logo à l'intérieur de l'overlay dès qu'il est
+  // dans le DOM (double rAF : laisse le navigateur peindre l'état initial
+  // avant d'ajouter la classe, sinon l'animation "saute" son départ).
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    replayLogoAnimation(el('overlay-logo-svg'));
+  }));
+}
+
+function closeConfirmationOverlay() {
+  clearTimeout(confirmationTimer);
+  if (confirmationOverlayEl) {
+    confirmationOverlayEl.remove();
+    confirmationOverlayEl = null;
+  }
+}
 
 /* =====================================================================
    MODALE DE PARTAGE APRÈS PUBLICATION
