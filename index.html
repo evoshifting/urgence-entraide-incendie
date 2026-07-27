@@ -48,8 +48,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=5">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="tailwind-built.css?v=6">
+<link rel="stylesheet" href="style.css?v=6">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
   // on préfère avertir clairement plutôt que laisser un site silencieusement
@@ -203,6 +203,11 @@
       <div id="facet-zone" class="flex flex-wrap items-center gap-2"></div>
     </section>
 
+    <!-- Bandeau défilant (ticker) : remerciements + messages de soutien + actus RSS, mélangés -->
+    <div class="ticker mt-4">
+      <div class="ticker__track" id="ticker-track"></div>
+    </div>
+
     <!-- Fil d'annonces -->
     <div class="flex items-center gap-2 mt-6 mb-1">
       <h2 class="font-bold uppercase tracking-[0.1em] text-gray-500 text-xs">Fil des annonces</h2>
@@ -224,14 +229,13 @@
 
 <!-- Mur de soutien (pleine largeur, sous les 2 colonnes) -->
 <div class="w-full max-w-[1120px] mx-auto px-4 pb-16">
-  <div class="flex items-center gap-2 mt-4 mb-1">
-    <h2 class="font-extrabold uppercase tracking-[0.08em] text-gray-700 text-sm">Mur de soutien</h2>
-    <span class="flex-1 h-px bg-sand/70"></span>
+  <div class="text-center mt-4 mb-6">
+    <h2 class="text-gray-900" style="font-family: Georgia, 'Times New Roman', serif; font-size: 30px; font-weight: 500;">Mur de soutien</h2>
+    <p class="text-[15px] text-gray-500 mt-1.5">Un mot pour celles et ceux qui se mobilisent — victimes, secours, bénévoles, donateurs.</p>
   </div>
-  <p class="text-[15px] text-gray-500 mb-4">Un mot pour celles et ceux qui se mobilisent — victimes, secours, bénévoles, donateurs.</p>
 
   <!-- Bandeau de remerciement aux forces engagées (ordre mélangé une fois par chargement) -->
-  <div id="forces-banner" class="forces-banner rounded-[20px] text-white p-7 mb-4">
+  <div id="forces-banner" class="forces-banner rounded-[20px] text-white p-7 mb-6">
     <div class="hazard-stripe forces-banner-stripe" aria-hidden="true"></div>
     <div class="flex items-center gap-3 mb-1">
       <img src="logo.svg?v=1" width="40" height="40" alt="" class="shrink-0">
@@ -244,9 +248,11 @@
     </div>
   </div>
 
-  <button id="btn-soutien" class="min-h-[56px] w-full bg-solid hover:bg-solid-dark active:scale-[0.98] transition text-white font-bold text-[17px] rounded-2xl flex items-center justify-center gap-1.5 mb-5">
-    🧡 Laisser un message de soutien
-  </button>
+  <div class="flex justify-center mb-6">
+    <button id="btn-soutien" class="min-h-[52px] px-8 bg-ink hover:bg-gray-800 active:scale-[0.98] transition text-white font-bold text-base rounded-full flex items-center justify-center gap-1.5">
+      🧡 Laisser un message
+    </button>
+  </div>
 
   <div class="flex items-center gap-2 mb-3">
     <h3 class="font-extrabold uppercase tracking-[0.06em] text-gray-700 text-xs">Messages des visiteurs</h3>
@@ -405,7 +411,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

@@ -131,35 +131,62 @@ header { position: sticky; top: 0; z-index: 100; }
 }
 .forces-banner-footer { border-top: 1px solid rgba(255,255,255,.1); }
 
-/* ---- Mur de messages : grille maçonnée (colonnes CSS) ---- */
+/* ---- Bandeau défilant (ticker) : remerciements + soutien + actus RSS ---- */
+.ticker {
+  position: relative; overflow: hidden; background: #111827;
+  border-radius: 16px; box-shadow: 0 4px 14px rgba(17,24,39,.12); height: 50px;
+  display: flex; align-items: center;
+}
+.ticker::before, .ticker::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 56px; z-index: 2; pointer-events: none;
+}
+.ticker::before { left: 0; background: linear-gradient(90deg, #111827, transparent); }
+.ticker::after  { right: 0; background: linear-gradient(270deg, #111827, transparent); }
+.ticker__track {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  animation: ticker-scroll 46s linear infinite; will-change: transform;
+}
+.ticker:hover .ticker__track { animation-play-state: paused; }
+@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-item {
+  display: inline-flex; align-items: center; gap: 8px; padding: 0 26px;
+  border-right: 1px solid rgba(255,255,255,.1); font-size: 14.5px; flex-shrink: 0;
+}
+.badge-info {
+  background: #DC2626; color: #fff; font-size: 11px; font-weight: 800;
+  letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; flex-shrink: 0;
+}
+@media (prefers-reduced-motion: reduce) { .ticker__track { animation: none; } }
+
+/* ---- Mur de messages : masonry organique, texte en serif italique ---- */
 .soutien-wall {
-  column-count: 1; column-gap: 14px;
+  column-count: 1; column-gap: 18px;
 }
 @media (min-width: 600px) { .soutien-wall { column-count: 2; } }
 @media (min-width: 900px) { .soutien-wall { column-count: 3; } }
 .soutien-card {
-  background: #fff; border: 1px solid #E5E7EB; border-radius: 16px;
-  padding: 18px; font-size: 15px; line-height: 1.55; color: #111827;
-  box-shadow: 0 1px 2px rgba(17,24,39,.05);
-  break-inside: avoid; width: 100%; display: inline-block; margin-bottom: 14px;
+  background: #fff; border: 1px solid #F3F4F6; border-radius: 18px;
+  padding: 22px; color: #1F2937;
+  box-shadow: 0 1px 2px rgba(17,24,39,.04);
+  break-inside: avoid; width: 100%; display: inline-block; margin-bottom: 18px;
 }
-.soutien-quote {
-  font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: #EA580C;
-  line-height: 1; display: block; margin-bottom: 2px;
+.soutien-card p {
+  font-family: Georgia, 'Times New Roman', serif; font-style: italic;
+  line-height: 1.5; margin: 0;
 }
-.soutien-footer { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.soutien-footer { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .soutien-avatar {
   width: 32px; height: 32px; border-radius: 999px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700;
+  font-size: 13px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
-.soutien-who { flex: 1; min-width: 0; }
-.soutien-name { font-size: 14px; font-weight: 700; color: #111827; }
+.soutien-who { flex: 1; min-width: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.soutien-name { font-size: 13.5px; font-weight: 700; color: #374151; }
 .soutien-lieu { font-size: 12px; color: #9CA3AF; }
 .soutien-like {
   min-height: 34px; border-radius: 999px; border: 1px solid #E5E7EB; background: #F9FAFB;
   font-size: 13px; font-weight: 700; padding: 0 12px; display: inline-flex; align-items: center; gap: 5px;
-  color: #6B7280; flex-shrink: 0;
+  color: #6B7280; flex-shrink: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 .soutien-like[data-liked="true"] { background: #FFF7ED; border-color: #FED7AA; color: #EA580C; }
 
@@ -185,12 +212,13 @@ header { position: sticky; top: 0; z-index: 100; }
 
 /* ---- Carte annonce : coins généreux + tranche colorée ---- */
 .card-annonce {
-  border-left-width: 4px;
-  border-left-style: solid;
-  border-radius: 16px;
+  border-radius: 18px;
+  transition: box-shadow .2s ease, transform .2s ease;
 }
-.card-annonce--besoin { border-left-color: #EA580C; }
-.card-annonce--offre  { border-left-color: #059669; }
+.card-annonce:hover {
+  box-shadow: 0 8px 24px rgba(17,24,39,.09);
+  transform: translateY(-2px);
+}
 
 /* ---- Badges type (CHERCHE / PROPOSE) : fond clair + texte coloré ---- */
 .badge-cherche { background: #FFF7ED; color: #EA580C; border: 1px solid #FED7AA; }

@@ -592,19 +592,18 @@ function cardHTML(a) {
   const cat = CATEGORIES[a.categorie] || { label: a.categorie, icon: '❔' };
   const isBesoin = a.type === 'besoin';
   const badgeClass = isBesoin ? 'badge-cherche' : 'badge-propose';
-  const badgeLabel = isBesoin ? '🆘 Cherche' : '🤝 Propose';
+  const badgeLabel = isBesoin ? 'Cherche' : 'Propose';
   const statutKey = a.statut || 'ouvert';
   const statut = STATUTS[statutKey] || STATUTS.ouvert;
-  const spineClass = isBesoin ? 'card-annonce--besoin' : 'card-annonce--offre';
   const inactiveClass = statutKey !== 'ouvert' ? 'card-annonce--inactive' : '';
   const mine = getMineIds().has(a.id);
   const telClean = cleanTel(a.contactTel);
   const distLabel = (userPos && hasCoords(a))
-    ? `<span class="font-semibold text-xs text-gray-500 shrink-0">${distanceKm(userPos.lat, userPos.lon, a.lat, a.lon).toFixed(1)} km</span>`
+    ? ` · ${distanceKm(userPos.lat, userPos.lon, a.lat, a.lon).toFixed(1)} km`
     : '';
 
   const statutButtons = mine ? `
-    <div class="flex items-center flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-200">
+    <div class="flex items-center flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
       <span class="text-xs font-bold uppercase text-gray-500 mr-1">Statut :</span>
       ${Object.entries(STATUTS).map(([key, s]) =>
         `<button data-set-statut="${a.id}" data-statut-value="${key}" class="statut-btn" data-active="${statutKey === key}">${s.icon} ${s.label}</button>`
@@ -612,30 +611,28 @@ function cardHTML(a) {
     </div>` : '';
 
   return `
-  <article class="card-enter card-annonce ${spineClass} ${inactiveClass} bg-white border border-gray-200 p-4 shadow-sm">
+  <article class="card-enter card-annonce ${inactiveClass} bg-white border border-gray-100 rounded-[18px] shadow-sm px-[22px] py-5">
     <div class="flex items-start justify-between gap-2 mb-2.5">
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-xs font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full ${badgeClass}">${badgeLabel}</span>
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">${cat.icon} ${cat.label}</span>
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full statut-badge--${statutKey}">${statut.icon} ${statut.label}</span>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-[11.5px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-lg ${badgeClass}">${badgeLabel}</span>
+        <span class="text-[13px] text-gray-500">${cat.icon} ${cat.label}</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full statut-badge--${statutKey}">${statut.icon} ${statut.label}</span>
       </div>
-      <div class="flex flex-col items-end gap-1 shrink-0">
-        <span class="font-semibold text-xs text-gray-500">${timeAgo(a.createdAt)}</span>
-        ${distLabel}
-      </div>
+      <span class="text-xs text-gray-400 shrink-0">${timeAgo(a.createdAt)}${distLabel}</span>
     </div>
 
-    <p class="text-base font-bold text-gray-900 mb-1">📍 ${escapeHTML(lieuComplet(a))}</p>
-    <p class="text-[15px] text-gray-700 mb-3 leading-relaxed">${escapeHTML(a.description)}</p>
+    <p class="text-[16.5px] text-gray-800 leading-[1.6] tracking-[-0.005em]">${escapeHTML(a.description)}</p>
 
-    <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-200">
-      <p class="font-semibold text-xs text-gray-500 truncate">${escapeHTML(a.contactPrenom)}</p>
-      <div class="flex items-center gap-2 shrink-0 flex-wrap">
-        <button data-copy="${escapeHTML(a.contactTel)}" class="btn-copy min-h-[44px] text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl px-3.5">Copier n°</button>
-        <a href="tel:${telClean}" class="min-h-[44px] inline-flex items-center text-xs font-bold bg-urgent hover:bg-urgent-dark text-white rounded-xl px-3.5">📞 Appeler</a>
-        <a href="${whatsappLink(a)}" target="_blank" rel="noopener" class="min-h-[44px] inline-flex items-center text-xs font-bold bg-wa hover:bg-wa-dark text-white rounded-xl px-3.5">📲 Partager</a>
-        ${mine ? `<button data-delete="${a.id}" class="btn-delete min-h-[44px] min-w-[44px] text-sm font-semibold text-gray-400 hover:text-urgent" aria-label="Supprimer mon annonce">🗑️</button>` : ''}
-      </div>
+    <p class="text-sm text-gray-500 mt-2.5">
+      📍 <strong class="text-gray-700 font-semibold">${escapeHTML(lieuComplet(a))}</strong>
+      <span class="text-gray-400">· ${escapeHTML(a.contactPrenom)}</span>
+      <button data-copy="${escapeHTML(a.contactTel)}" class="btn-copy underline decoration-gray-300 hover:text-gray-700">Copier n°</button>
+    </p>
+
+    <div class="flex items-center gap-2.5 mt-4 pt-4 border-t border-gray-100">
+      <a href="tel:${telClean}" class="flex-1 min-h-[42px] inline-flex items-center justify-center gap-1.5 text-[15px] font-semibold bg-gray-100 hover:bg-gray-200 active:scale-[.97] transition text-gray-900 rounded-xl">📞 Appeler</a>
+      <a href="${whatsappLink(a)}" target="_blank" rel="noopener" class="flex-1 min-h-[42px] inline-flex items-center justify-center gap-1.5 text-[15px] font-semibold bg-wa hover:bg-wa-dark active:scale-[.97] transition text-white rounded-xl">💬 Partager</a>
+      ${mine ? `<button data-delete="${a.id}" class="btn-delete min-h-[42px] min-w-[42px] text-sm font-semibold text-gray-400 hover:text-urgent shrink-0" aria-label="Supprimer mon annonce">🗑️</button>` : ''}
     </div>
     ${statutButtons}
   </article>`;
@@ -1341,6 +1338,76 @@ function renderForcesBanner() {
   `).join('');
 }
 
+/* =====================================================================
+   BANDEAU DÉFILANT (TICKER) — trois sources mélangées : remerciements
+   fixes, messages de soutien des visiteurs, actualités RSS France Info.
+
+   ⚠️ Le flux RSS (franceinfo) est cross-origin : un fetch direct depuis
+   le navigateur est bloqué par CORS, et ce site est 100% statique (pas
+   de serveur). RSS_ENDPOINT pointe donc vers une route qui n'existe pas
+   encore ("/api/rss-incendies") — tant qu'aucune fonction serveur n'est
+   déployée (Cloudflare Worker, fonction Netlify/Vercel...), fetchInfoItems()
+   échoue et se dégrade proprement : le ticker tourne quand même, juste
+   sans les puces 🔴 INFO. C'est le comportement prévu, pas un bug.
+===================================================================== */
+
+const RSS_ENDPOINT = '/api/rss-incendies';
+
+const TICKER_THANKS = [
+  'Merci aux pompiers venus en renfort de toute la France 🧡',
+  'Courage aux familles évacuées, on pense à vous',
+  'Bravo aux bénévoles mobilisés au parc des expositions',
+  'Merci aux soignants qui veillent sur les plus fragiles',
+  'Merci à ceux qui ouvrent leur porte à des inconnus',
+];
+
+async function fetchInfoItems(limit = 6) {
+  try {
+    const res = await fetch(RSS_ENDPOINT, { cache: 'no-store' });
+    if (!res.ok) throw new Error('endpoint indisponible');
+    const xmlText = await res.text();
+    const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
+    if (xml.querySelector('parsererror')) throw new Error('RSS invalide');
+    return [...xml.querySelectorAll('item')]
+      .slice(0, limit)
+      .map(item => (item.querySelector('title')?.textContent || '').trim())
+      .filter(Boolean)
+      .map(title => ({ kind: 'info', text: title }));
+  } catch (e) {
+    // Dégradation gracieuse voulue : pas d'endpoint serveur disponible
+    // pour l'instant sur ce site statique. Le ticker continue sans INFO.
+    return [];
+  }
+}
+
+function tickerChipHTML(it) {
+  if (it.kind === 'info') {
+    return `<span class="ticker-item"><span class="badge-info">🔴 INFO</span><span style="color:#F3F4F6;font-weight:500;">${escapeHTML(it.text)}</span></span>`;
+  }
+  if (it.kind === 'support') {
+    return `<span class="ticker-item"><span style="color:#FDBA74;">💬</span><span style="color:#E5E7EB;">“${escapeHTML(it.text)}”</span><span style="color:#9CA3AF;font-weight:600;">— ${escapeHTML(it.name)}</span></span>`;
+  }
+  return `<span class="ticker-item"><span style="color:#FB923C;">🧡</span><span style="color:#E5E7EB;">${escapeHTML(it.text)}</span></span>`;
+}
+
+async function renderTicker() {
+  const track = el('ticker-track');
+  const supportItems = soutienCache
+    .filter(m => m.message)
+    .map(m => ({ kind: 'support', text: m.message, name: m.pseudo || 'Anonyme' }));
+  const items = [
+    ...TICKER_THANKS.map(t => ({ kind: 'thanks', text: t })),
+    ...supportItems,
+    ...(await fetchInfoItems()),
+  ];
+  if (!items.length) return;
+  const mixed = shuffle(items);
+  const html = mixed.map(tickerChipHTML).join('');
+  // Contenu dupliqué deux fois : l'animation translate à -50% boucle
+  // ainsi sans saut visible.
+  track.innerHTML = html + html;
+}
+
 const SOUTIEN_STORAGE_KEY = 'uei_soutien_v1';
 const SOUTIEN_LIKES_KEY = 'uei_soutien_likes_v1'; // ids likés depuis CET appareil, anti double-like
 let soutienCache = [];
@@ -1389,6 +1456,7 @@ function addSoutienMessage(message, pseudo, lieu) {
   soutienCache = [m, ...soutienCache];
   saveSoutienLocal(soutienCache);
   renderSoutienWall();
+  renderTicker();
   if (db) {
     db.collection('soutien').doc(m.id).set(m).catch((err) => {
       console.warn('[UEI] Échec envoi message de soutien, restera local seulement', err);
@@ -1432,10 +1500,12 @@ function renderSoutienWall() {
     const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
     const isLiked = liked.has(m.id);
     const likeCount = m.likes || 0;
+    // Taille variable selon la longueur du message, pour un rythme organique
+    // dans la grille maçonnée plutôt qu'une typographie uniforme et rigide.
+    const fontSize = m.message.length > 80 ? '18px' : '16px';
     return `
     <article class="soutien-card">
-      <span class="soutien-quote" aria-hidden="true">“</span>
-      <p>${escapeHTML(m.message)}</p>
+      <p style="font-size:${fontSize};">${escapeHTML(m.message)}</p>
       <div class="soutien-footer">
         <div class="soutien-avatar" style="background:${color.bg};color:${color.fg};">${escapeHTML(initial)}</div>
         <div class="soutien-who">
@@ -1514,6 +1584,9 @@ async function init() {
 
   soutienCache = loadSoutienLocal();
   renderSoutienWall();
+  renderTicker();
+  const tickerInterval = setInterval(renderTicker, 5 * 60 * 1000); // rafraîchit les INFO toutes les 5 min
+  if (typeof tickerInterval.unref === 'function') tickerInterval.unref();
   if (db) {
     pollSoutien(true);
     const t = setInterval(() => pollSoutien(false), POLL_INTERVAL_MS);
