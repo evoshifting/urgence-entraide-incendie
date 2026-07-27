@@ -103,14 +103,14 @@ async function unlock() {
 
 let db, currentTab = 'annonces';
 let cacheAnnonces = [], cacheSoutien = [];
+let moderationListenersAttached = false;
+const STATUTS_MOD = { ouvert: '🟢 Ouvert', pause: '⏸️ En pause', pourvu: '🔒 Clôturé' };
 
 if (sessionStorage.getItem('uei_mod_unlocked') === '1') {
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   initModeration();
 }
-
-let moderationListenersAttached = false;
 
 function initModeration() {
   if (!window.UEI_FIREBASE_CONFIG || window.UEI_FIREBASE_CONFIG.apiKey === 'REMPLACE_MOI') {
@@ -169,8 +169,6 @@ async function loadAll() {
 function escapeHTML(str = '') {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-
-const STATUTS_MOD = { ouvert: '🟢 Ouvert', pause: '⏸️ En pause', pourvu: '🔒 Clôturé' };
 
 function render() {
   const list = document.getElementById('list');
