@@ -888,24 +888,34 @@ async function fetchCommuneSuggestions(q) {
   communeAbort?.abort();
   communeAbort = new AbortController();
   try {
-    // Pas de filtre "type=municipality" : ce filtre renvoyait un seul point
-    // (le centre administratif) par ville, quel que soit le code postal
-    // recherché — toutes les annonces d'une grande ville comme Bordeaux se
-    // retrouvaient donc au même endroit sur la carte. Sans ce filtre, l'API
-    // renvoie aussi des résultats de niveau quartier/rue/code postal,
-    // beaucoup plus précis. Pour rester utilisable même en tapant juste un
-    // nom de ville, on demande un peu plus de résultats (10 au lieu de 6).
-    const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=10`, { signal: communeAbort.signal });
+    // On utilise l'API Découpage administratif (geo.api.gouv.fr), pas l'API
+    // Adresse (api-adresse.data.gouv.fr) : cette dernière ne renvoie qu'UN
+    // SEUL code postal par ville, même pour les villes qui en ont plusieurs
+    // (Bordeaux, Toulouse, Nantes, Lille...) — limite documentée de cette
+    // API, confirmée par le forum officiel Etalab. geo.api.gouv.fr renvoie
+    // en revanche la liste complète des codes postaux par commune
+    // (`codesPostaux`), ce qui permet de proposer "Bordeaux 33000",
+    // "Bordeaux 33100", "Bordeaux 33300"... séparément, comme sur les
+    // sites d'annonces grand public.
+    // `boost=population` fait remonter les grandes villes en premier
+    // (évite qu'un hameau homonyme perdu dans un autre département sorte
+    // avant la vraie ville recherchée).
+    const res = await fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&boost=population&limit=6&fields=nom,codesPostaux,centre`, { signal: communeAbort.signal });
     if (!res.ok) throw new Error('bad response');
-    const data = await res.json();
-    const features = data.features || [];
-    if (!features.length) { hideCommuneSuggestions(); return; }
-    communeSuggestions.innerHTML = features.map(f => {
-      const label = f.properties.label;
-      const postcode = f.properties.postcode || '';
-      const [lon, lat] = f.geometry?.coordinates || [];
-      return `<li data-value="${escapeHTML(label)}" data-lat="${lat ?? ''}" data-lon="${lon ?? ''}" class="px-3 py-2.5 hover:bg-warm-100 cursor-pointer text-sm border-b border-sand/30 last:border-0 flex items-center justify-between gap-2">
-        <span>${escapeHTML(label)}</span><span class="font-semibold text-xs text-gray-500 shrink-0">${escapeHTML(postcode)}</span>
+    const communes = await res.json();
+    if (!Array.isArray(communes) || !communes.length) { hideCommuneSuggestions(); return; }
+    // Développe chaque commune en une ligne par code postal.
+    const rows = [];
+    communes.forEach(c => {
+      const [lon, lat] = c.centre?.coordinates || [];
+      const postcodes = (c.codesPostaux && c.codesPostaux.length) ? c.codesPostaux : [''];
+      postcodes.forEach(cp => rows.push({ nom: c.nom, postcode: cp, lat, lon }));
+    });
+    const limited = rows.slice(0, 14);
+    communeSuggestions.innerHTML = limited.map(r => {
+      const value = r.postcode ? `${r.nom} ${r.postcode}` : r.nom;
+      return `<li data-value="${escapeHTML(value)}" data-lat="${r.lat ?? ''}" data-lon="${r.lon ?? ''}" class="px-3 py-2.5 hover:bg-warm-100 cursor-pointer text-sm border-b border-sand/30 last:border-0 flex items-center justify-between gap-2">
+        <span>${escapeHTML(r.nom)}</span><span class="font-semibold text-xs text-gray-500 shrink-0">${escapeHTML(r.postcode)}</span>
       </li>`;
     }).join('');
     communeSuggestions.classList.remove('hidden');
@@ -944,6 +954,78 @@ document.addEventListener('click', (e) => {
 });
 
 /* =====================================================================
+   AUTOCOMPLÉTION DU QUARTIER — API Adresse (api-adresse.data.gouv.fr),
+   contrairement au champ Ville : ici on VEUT la précision rue/quartier
+   que cette API donne bien (elle n'est mauvaise que pour les recherches
+   de simples noms de ville, à cause de son classement par pertinence
+   textuelle plutôt que par importance — pas un souci quand on tape déjà
+   un nom de quartier précis). La recherche est biaisée autour de la
+   ville déjà choisie (paramètres lat/lon) pour prioriser les résultats
+   proches plutôt qu'un homonyme à l'autre bout de la France.
+   Sélectionner une suggestion ici AFFINE les coordonnées GPS de
+   l'annonce (elles remplacent celles, plus approximatives, de la ville
+   seule) — la carte devient donc plus précise, sans rien casser côté
+   filtre "Zone" qui continue de se baser sur le champ Ville.
+===================================================================== */
+
+const quartierInput = el('f-quartier');
+const quartierSuggestions = el('f-quartier-suggestions');
+let quartierDebounce, quartierAbort;
+
+function hideQuartierSuggestions() {
+  quartierSuggestions.classList.add('hidden');
+  quartierSuggestions.innerHTML = '';
+}
+
+async function fetchQuartierSuggestions(q) {
+  quartierAbort?.abort();
+  quartierAbort = new AbortController();
+  try {
+    let url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=6`;
+    if (communeLat.value && communeLon.value) {
+      url += `&lat=${encodeURIComponent(communeLat.value)}&lon=${encodeURIComponent(communeLon.value)}`;
+    }
+    const res = await fetch(url, { signal: quartierAbort.signal });
+    if (!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const features = data.features || [];
+    if (!features.length) { hideQuartierSuggestions(); return; }
+    quartierSuggestions.innerHTML = features.map(f => {
+      const label = f.properties.label;
+      const [lon, lat] = f.geometry?.coordinates || [];
+      return `<li data-value="${escapeHTML(f.properties.name || label)}" data-lat="${lat ?? ''}" data-lon="${lon ?? ''}" class="px-3 py-2.5 hover:bg-warm-100 cursor-pointer text-sm border-b border-sand/30 last:border-0">
+        ${escapeHTML(label)}
+      </li>`;
+    }).join('');
+    quartierSuggestions.classList.remove('hidden');
+  } catch (err) {
+    if (err.name !== 'AbortError') hideQuartierSuggestions(); // API indisponible : le champ reste un simple texte libre
+  }
+}
+
+quartierInput.addEventListener('input', () => {
+  const q = quartierInput.value.trim();
+  clearTimeout(quartierDebounce);
+  if (q.length < 3) { hideQuartierSuggestions(); return; }
+  quartierDebounce = setTimeout(() => fetchQuartierSuggestions(q), 250);
+});
+quartierSuggestions.addEventListener('click', (e) => {
+  const li = e.target.closest('li[data-value]');
+  if (!li) return;
+  quartierInput.value = li.getAttribute('data-value');
+  const lat = li.getAttribute('data-lat');
+  const lon = li.getAttribute('data-lon');
+  // On affine les coordonnées de l'annonce SEULEMENT si la suggestion en
+  // fournit — sinon on garde celles, plus larges, de la ville.
+  if (lat && lon) { communeLat.value = lat; communeLon.value = lon; }
+  hideQuartierSuggestions();
+});
+quartierInput.addEventListener('blur', () => setTimeout(hideQuartierSuggestions, 150));
+document.addEventListener('click', (e) => {
+  if (!quartierInput.contains(e.target) && !quartierSuggestions.contains(e.target)) hideQuartierSuggestions();
+});
+
+/* =====================================================================
    MODALE / PUBLICATION
 ===================================================================== */
 
@@ -953,6 +1035,7 @@ function openModal(presetType) {
   communeLat.value = '';
   communeLon.value = '';
   hideCommuneSuggestions();
+  hideQuartierSuggestions();
   const identity = getIdentity();
   if (identity) {
     el('f-prenom').value = identity.prenom;
