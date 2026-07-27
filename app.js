@@ -1328,12 +1328,21 @@ function tryImportFromURL() {
   try {
     const json = decodeURIComponent(escape(atob(decodeURIComponent(raw))));
     const payload = JSON.parse(json);
-    if (payload && payload.id && payload.type && payload.description) {
+    // ⚠️ Même garde-fou que pour la migration ascendante (voir pollFirestore,
+    // bug corrigé le 27/07) : un vieux lien de partage (WhatsApp, historique
+    // du navigateur, favori...) contient les données de l'annonce telles
+    // qu'au moment du partage. Sans restriction, le rouvrir des jours après
+    // réinjecterait l'annonce même si elle a été supprimée entre-temps par
+    // un modérateur. On n'importe donc que les liens partagés récemment.
+    const isRecent = payload && payload.createdAt && (Date.now() - payload.createdAt) < MIGRATION_WINDOW_MS;
+    if (payload && payload.id && payload.type && payload.description && isRecent) {
       const added = importAnnonce(payload);
       if (added) {
         importBanner.classList.remove('hidden');
         setTimeout(() => importBanner.classList.add('hidden'), 6000);
       }
+    } else if (payload && payload.id && !isRecent) {
+      console.info('[UEI] Lien de partage trop ancien (>30 min), ignoré pour éviter de réinjecter une annonce potentiellement supprimée depuis.');
     }
   } catch (err) {
     console.warn('Lien de partage invalide', err);
