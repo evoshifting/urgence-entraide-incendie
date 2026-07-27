@@ -48,8 +48,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=6">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="tailwind-built.css?v=7">
+<link rel="stylesheet" href="style.css?v=7">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
   // on préfère avertir clairement plutôt que laisser un site silencieusement
@@ -234,19 +234,21 @@
     <p class="text-[15px] text-gray-500 mt-1.5">Un mot pour celles et ceux qui se mobilisent — victimes, secours, bénévoles, donateurs.</p>
   </div>
 
-  <!-- Bandeau de remerciement aux forces engagées (ordre mélangé une fois par chargement) -->
-  <div id="forces-banner" class="forces-banner rounded-[20px] text-white p-7 mb-6">
-    <div class="hazard-stripe forces-banner-stripe" aria-hidden="true"></div>
-    <div class="flex items-center gap-3 mb-1">
-      <img src="logo.svg?v=1" width="40" height="40" alt="" class="shrink-0">
-      <h3 class="text-xl font-extrabold">Merci à toutes les forces engagées</h3>
+  <!-- Bandeau de remerciement aux forces engagées : carte légère avec un
+       seul rang de pastilles qui défile (ordre mélangé une fois par
+       chargement) -->
+  <section class="forces mb-6">
+    <div class="forces__head">
+      <img src="logo.svg?v=1" width="34" height="34" alt="" class="shrink-0">
+      <div>
+        <div class="forces__title">Merci à toutes les forces engagées</div>
+        <div class="forces__sub">Pompiers, aériens, soignants, État, forêt, citoyens — Gironde, juillet 2026.</div>
+      </div>
     </div>
-    <p class="text-sm text-gray-300 mb-4">Sur le terrain, dans les airs et dans l'ombre — Gironde, juillet 2026.</p>
-    <div id="forces-groups"></div>
-    <div class="forces-banner-footer mt-5 pt-4 text-sm text-gray-300">
-      Et chaque anonyme qui a ouvert sa porte, apporté de l'eau, gardé un animal ou partagé une info. <strong class="text-white">Cette page est pour vous.</strong>
+    <div class="fmarq">
+      <div class="fmarq__track" id="forces-track"></div>
     </div>
-  </div>
+  </section>
 
   <div class="flex justify-center mb-6">
     <button id="btn-soutien" class="min-h-[52px] px-8 bg-ink hover:bg-gray-800 active:scale-[0.98] transition text-white font-bold text-base rounded-full flex items-center justify-center gap-1.5">
@@ -411,7 +413,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

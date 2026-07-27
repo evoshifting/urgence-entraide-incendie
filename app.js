@@ -1327,15 +1327,17 @@ function shuffle(arr) {
 }
 
 // Mélange une seule fois par chargement de page (pas à chaque render) :
-// aucune catégorie ni aucun organisme ne doit sembler "en tête" ou
-// prioritaire par rapport aux autres.
-const SHUFFLED_FORCES = shuffle(Object.entries(FORCES)).map(([title, items]) => [title, shuffle(items)]);
+// aucun organisme ne doit sembler "en tête" ou prioritaire par rapport
+// aux autres. Les catégories ne servent que de source : à l'affichage,
+// tout est aplati en un seul rang mélangé (bandeau défilant compact).
+const SHUFFLED_FORCES = shuffle(Object.values(FORCES).flat());
 
 function renderForcesBanner() {
-  el('forces-groups').innerHTML = SHUFFLED_FORCES.map(([title, items]) => `
-    <div class="forces-group-title">${escapeHTML(title)}</div>
-    <div class="forces-pills">${items.map(i => `<span class="forces-pill">${escapeHTML(i)}</span>`).join('')}</div>
-  `).join('');
+  const pills = SHUFFLED_FORCES.map(name => `<span class="forces__pill">${escapeHTML(name)}</span>`).join('');
+  // Dupliqué deux fois : l'animation translate à -50% boucle ainsi sans
+  // saut visible. Le 2ᵉ jeu est décoratif (même contenu), masqué aux
+  // lecteurs d'écran.
+  el('forces-track').innerHTML = pills + `<span aria-hidden="true" style="display:inline-flex;gap:8px;">${pills}</span>`;
 }
 
 /* =====================================================================

@@ -109,27 +109,34 @@ header { position: sticky; top: 0; z-index: 100; }
 #map-container { width: 100%; z-index: 0; }
 .leaflet-popup-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; }
 
-/* ---- Bandeau de remerciement aux forces engagées ---- */
-.forces-banner {
-  background: linear-gradient(135deg, #111827, #1F2937);
-  position: relative;
-  overflow: hidden;
+/* ---- Bandeau de remerciement aux forces engagées : carte légère,
+   une seule ligne de pastilles qui défile ---- */
+.forces {
+  background: #fff; border: 1px solid #F3F4F6; border-radius: 18px;
+  padding: 18px 0 16px; box-shadow: 0 1px 2px rgba(17,24,39,.04);
 }
-.forces-banner-stripe {
-  position: absolute; top: 0; left: 0; right: 0; height: 6px;
-  background-image: repeating-linear-gradient(-45deg, #111827 0 20px, #EA580C 20px 40px);
+.forces__head { display: flex; align-items: center; gap: 11px; padding: 0 20px 14px; }
+.forces__title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: #111827; }
+.forces__sub { font-size: 13px; color: #6B7280; }
+
+.fmarq { position: relative; overflow: hidden; }
+.fmarq::before, .fmarq::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 48px; z-index: 2; pointer-events: none;
 }
-.forces-group-title {
-  color: #F59E0B; font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.06em; margin: 14px 0 8px;
+.fmarq::before { left: 0; background: linear-gradient(90deg, #fff, transparent); }
+.fmarq::after  { right: 0; background: linear-gradient(270deg, #fff, transparent); }
+.fmarq__track {
+  display: inline-flex; gap: 8px; white-space: nowrap;
+  animation: fscroll 38s linear infinite; will-change: transform; padding: 0 20px;
 }
-.forces-group-title:first-child { margin-top: 0; }
-.forces-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.forces-pill {
-  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
-  border-radius: 999px; padding: 7px 13px; font-size: 14px; color: #fff;
+.fmarq:hover .fmarq__track { animation-play-state: paused; }
+@keyframes fscroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .fmarq__track { animation: none; } }
+
+.forces__pill {
+  display: inline-flex; align-items: center; background: #F3F4F6; border: 1px solid #E5E7EB;
+  border-radius: 999px; padding: 6px 13px; font-size: 13.5px; color: #374151; white-space: nowrap; flex-shrink: 0;
 }
-.forces-banner-footer { border-top: 1px solid rgba(255,255,255,.1); }
 
 /* ---- Bandeau défilant (ticker) : remerciements + soutien + actus RSS ---- */
 .ticker {
