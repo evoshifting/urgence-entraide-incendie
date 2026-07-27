@@ -48,7 +48,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=7">
+<link rel="stylesheet" href="tailwind-built.css?v=8">
 <link rel="stylesheet" href="style.css?v=7">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
@@ -359,9 +359,10 @@
 
       <!-- Description -->
       <div>
-        <label for="f-description" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Description rapide</label>
-        <textarea id="f-description" required maxlength="220" rows="3" placeholder="Ex : Chambre disponible pour 2 pers., arrivée possible ce soir, parking dispo."
-          class="w-full rounded-xl border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-none"></textarea>
+        <label for="f-description" class="block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1">Description</label>
+        <textarea id="f-description" required maxlength="1000" rows="6" placeholder="Ex : Chambre disponible pour 2 pers., arrivée possible ce soir, parking dispo."
+          class="w-full rounded-xl border border-sand px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-solid resize-y"></textarea>
+        <p class="text-xs text-gray-400 mt-1 text-right"><span id="description-char-count">0</span>/1000</p>
       </div>
 
       <!-- Contact -->
@@ -413,7 +414,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=22"></script>
+<script src="app.js?v=23"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
