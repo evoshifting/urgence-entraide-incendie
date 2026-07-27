@@ -11,17 +11,21 @@
    script tiers, ni gêner la synchronisation en temps réel.
 ===================================================================== */
 
-const CACHE_NAME = 'uei-shell-v22';
+const CACHE_NAME = 'uei-shell-v23';
 const SHELL_FILES = [
   './',
   './index.html',
-  './app.js?v=17',
+  './app.js?v=18',
   './style.css?v=4',
   './tailwind-built.css?v=4',
   './firebase-config.js?v=1',
-  './manifest.json',
+  './manifest.json?v=2',
   './icon-192.png',
   './icon-512.png',
+  './logo.svg?v=1',
+  './favicon.svg?v=1',
+  './favicon.ico?v=1',
+  './apple-touch-icon.png?v=1',
 ];
 
 self.addEventListener('install', (event) => {

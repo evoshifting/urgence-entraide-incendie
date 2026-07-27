@@ -442,10 +442,10 @@ function distanceKm(lat1, lon1, lat2, lon2) {
 ===================================================================== */
 
 function whatsappMessage(a) {
-  const cat = (CATEGORIES[a.categorie] || { label: a.categorie }).label.toUpperCase();
-  const action = a.type === 'besoin' ? 'RECHERCHE' : 'PROPOSITION';
+  const cat = (CATEGORIES[a.categorie] || { label: a.categorie }).label;
+  const action = a.type === 'besoin' ? 'Recherche' : 'Offre';
   const link = buildShareLink(a);
-  return `🚨 URGENCE INCENDIE - ${action} ${cat} à ${lieuComplet(a)}\n\n${a.description}\n\n📞 Contact : ${a.contactPrenom} au ${a.contactTel}\n\n👉 Voir / relayer l'annonce : ${link}`;
+  return `[Urgence Entraide Incendie] ${action} · ${cat}\n${a.description}\n— ${a.contactPrenom}, ${lieuComplet(a)} · 📞 ${a.contactTel}\n👉 ${link}`;
 }
 function whatsappLink(a) {
   return `https://wa.me/?text=${encodeURIComponent(whatsappMessage(a))}`;

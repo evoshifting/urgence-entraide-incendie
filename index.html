@@ -30,10 +30,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Urgence Entraide Incendie — Biscarrosse / Cap-Ferret</title>
 <meta name="description" content="Mise en relation d'urgence entre victimes des incendies et personnes solidaires : logement, chambres, matériel. Partage instantané via WhatsApp.">
-<meta name="theme-color" content="#111827">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%23EA580C%22/><path fill=%22white%22 transform=%22translate(3,3) scale(0.75)%22 d=%22M12 2c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1 0-1-.3-2 2 2 3.3 4.6 3.3 7.5A8 8 0 1 1 5 13.5C5 10 7.5 7 9 5c1.2-1.6 3-2 3-3Z%22/></svg>">
+<meta name="theme-color" content="#E14B10">
+
+<!-- Favicon / identité (voir logo.svg pour le SVG maître) -->
+<link rel="icon" href="favicon.ico?v=1" sizes="any">
+<link rel="icon" href="favicon.svg?v=1" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
+<link rel="manifest" href="manifest.json?v=2">
+
+<!-- Open Graph : aperçu du lien quand il est partagé (WhatsApp, etc.) -->
+<meta property="og:title" content="Urgence Entraide Incendie">
+<meta property="og:description" content="Entraide de proximité pendant les incendies : demandez ou proposez de l'aide près de chez vous.">
+<meta property="og:image" content="https://urgence-entraide-incendie.web.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://urgence-entraide-incendie.web.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Urgence Entraide Incendie">
+
 <link rel="stylesheet" href="tailwind-built.css?v=4">
 <link rel="stylesheet" href="style.css?v=4">
 <script>
@@ -80,16 +94,14 @@
   <!-- ============================= COLONNE GAUCHE ============================= -->
   <div class="sidebar-col lg:sticky lg:top-16 pt-4 lg:pt-6">
 
-    <!-- Logo : tuile orange + flamme -->
-    <div class="flex items-center gap-3 mb-4">
-      <div class="logo-tile w-11 h-11 rounded-lg" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1 0-1-.3-2 2 2 3.3 4.6 3.3 7.5A8 8 0 1 1 5 13.5C5 10 7.5 7 9 5c1.2-1.6 3-2 3-3Z"/></svg>
-      </div>
-      <div class="leading-tight min-w-0">
-        <p class="text-lg font-extrabold uppercase tracking-tight text-gray-900 truncate">Urgence</p>
-        <p class="text-sm font-semibold text-gray-700 -mt-0.5 truncate">Entraide Incendie</p>
-      </div>
-    </div>
+    <!-- Logo : nouvelle identité (flamme + cœur en espace négatif) -->
+    <a href="./" aria-label="Accueil — Urgence Entraide Incendie" class="flex items-center gap-3 mb-4 w-fit">
+      <img src="logo.svg?v=1" width="44" height="44" alt="" class="shrink-0">
+      <span class="leading-tight min-w-0">
+        <span class="block text-lg font-extrabold uppercase tracking-tight text-gray-900 truncate">Urgence</span>
+        <span class="block text-sm font-semibold text-gray-700 -mt-0.5 truncate">Entraide Incendie</span>
+      </span>
+    </a>
 
     <!-- CTA permanents -->
     <div class="grid grid-cols-2 gap-2 mb-2">
@@ -193,9 +205,7 @@
   <div id="forces-banner" class="forces-banner rounded-[20px] text-white p-7 mb-4">
     <div class="hazard-stripe forces-banner-stripe" aria-hidden="true"></div>
     <div class="flex items-center gap-3 mb-1">
-      <div class="logo-tile w-10 h-10 rounded-[11px]" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1 0-1-.3-2 2 2 3.3 4.6 3.3 7.5A8 8 0 1 1 5 13.5C5 10 7.5 7 9 5c1.2-1.6 3-2 3-3Z"/></svg>
-      </div>
+      <img src="logo.svg?v=1" width="40" height="40" alt="" class="shrink-0">
       <h3 class="text-xl font-extrabold">Merci à toutes les forces engagées</h3>
     </div>
     <p class="text-sm text-gray-300 mb-4">Sur le terrain, dans les airs et dans l'ombre — Gironde, juillet 2026.</p>
@@ -366,7 +376,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=1"></script>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
