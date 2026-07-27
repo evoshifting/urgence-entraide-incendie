@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insertion messages équipe — usage unique</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F9FAFB; color: #111827; margin: 0; padding: 24px; max-width: 700px; margin: 0 auto; }
+  h1 { font-size: 18px; }
+  .warn { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #9A3412; margin-bottom: 20px; }
+  .msg-preview { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; font-size: 14px; }
+  .msg-preview .author { font-size: 12px; color: #6B7280; margin-top: 6px; font-weight: 700; }
+  button { background: #111827; color: #fff; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #log { margin-top: 16px; font-size: 13px; white-space: pre-wrap; }
+  .ok { color: #059669; } .err { color: #DC2626; }
+</style>
+</head>
+<body>
+
+<h1>🧡 Insertion des messages "L'équipe du site" dans le mur de soutien</h1>
+<div class="warn">
+  ⚠️ Outil à usage unique. Les messages ont un identifiant fixe (idempotent : relancer ne crée pas de doublons, ça écrase juste avec le même contenu). <strong>Supprime ce fichier du serveur une fois utilisé</strong> pour ne pas le laisser traîner inutilement.
+</div>
+
+<div id="preview"></div>
+<button id="btn-insert">Insérer les 5 messages dans Firestore</button>
+<div id="log"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js?v=1"></script>
+<script>
+const MESSAGES = [
+  {
+    id: 'equipe-seed-01',
+    message: "Merci à toutes celles et ceux qui utilisent déjà le site pour demander ou proposer de l'aide — chaque annonce compte. N'hésitez pas à laisser un mot vous aussi, même juste pour dire qu'on pense à vous.",
+    pseudo: "L'équipe du site", likes: 0,
+  },
+  {
+    id: 'equipe-seed-02',
+    message: "Ce site est né en quelques jours, entre bénévoles, pour essayer d'aider un peu pendant cette période difficile. Merci à tous ceux qui le font vivre en partageant et en publiant des annonces.",
+    pseudo: "L'équipe du site", likes: 0,
+  },
+  {
+    id: 'equipe-seed-03',
+    message: "Un immense merci aux pompiers, aux soignants et à tous les bénévoles mobilisés sur le terrain depuis plusieurs jours.",
+    pseudo: "L'équipe du site", likes: 0,
+  },
+  {
+    id: 'equipe-seed-04',
+    message: "Si vous avez un logement, du matériel ou juste un peu de temps à proposer, chaque petite annonce peut vraiment aider quelqu'un ce soir.",
+    pseudo: "L'équipe du site", likes: 0,
+  },
+  {
+    id: 'equipe-seed-05',
+    message: "Merci de faire tourner ce site autour de vous — plus on est nombreux à relayer, plus vite ça aide.",
+    pseudo: "L'équipe du site", likes: 0,
+  },
+];
+
+function escapeHTML(str = '') {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+document.getElementById('preview').innerHTML = MESSAGES.map(m => `
+  <div class="msg-preview">${escapeHTML(m.message)}<div class="author">— ${escapeHTML(m.pseudo)}</div></div>
+`).join('');
+
+let db;
+try {
+  firebase.initializeApp(window.UEI_FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch (e) {}
+
+document.getElementById('btn-insert').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-insert');
+  const log = document.getElementById('log');
+  btn.disabled = true;
+  log.textContent = '';
+  if (!db) {
+    log.innerHTML = '<span class="err">❌ Firebase non configuré (firebase-config.js manquant ou invalide).</span>';
+    return;
+  }
+  const now = Date.now();
+  for (let i = 0; i < MESSAGES.length; i++) {
+    const m = MESSAGES[i];
+    // Étalés sur les dernières heures, pour ne pas tous apparaître exactement au même instant
+    const createdAt = now - (MESSAGES.length - i) * 40 * 60 * 1000;
+    try {
+      await db.collection('soutien').doc(m.id).set({ ...m, createdAt });
+      log.innerHTML += `<div class="ok">✅ "${escapeHTML(m.message.slice(0, 40))}..." inséré</div>`;
+    } catch (err) {
+      log.innerHTML += `<div class="err">❌ Échec pour ${m.id} : ${escapeHTML(err.message)}</div>`;
+    }
+  }
+  log.innerHTML += '<div style="margin-top:10px;font-weight:700;">Terminé. Tu peux maintenant supprimer ce fichier du serveur.</div>';
+});
+</script>
+</body>
+</html>
