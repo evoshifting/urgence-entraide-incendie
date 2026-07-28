@@ -48,8 +48,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=9">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="tailwind-built.css?v=10">
+<link rel="stylesheet" href="style.css?v=8">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
   // on préfère avertir clairement plutôt que laisser un site silencieusement
@@ -141,15 +141,27 @@
     </div>
     <p id="sync-status" class="font-semibold text-xs tracking-wide text-gray-500 mb-4 flex items-center gap-1.5"></p>
 
-    <!-- Info officielle : centres d'accueil (mise à jour manuelle, voir source) -->
-    <div class="bg-solid-light border border-emerald-200 text-emerald-800 text-xs rounded-2xl px-4 py-3.5 leading-relaxed mb-4">
-      <span class="font-bold uppercase tracking-wide text-emerald-700/80 text-xs">📋 Info officielle — Centres d'accueil</span><br>
-      Des centres d'accueil sont ouverts dans <strong>une douzaine de communes</strong> (dont Lège-Cap-Ferret, Lacanau, Le Porge, Biganos, Marcheprime, Mios, Hourtin, Carcans, Audenge, Andernos-les-Bains, Lanton, Bordeaux). <strong>Certains sont déjà saturés</strong> et ne peuvent plus accueillir de nouvelles personnes — vérifie la liste à jour avant de t'y rendre. <strong>Les dons se déposent uniquement en mairie</strong>, pas directement sur les sites d'accueil.
-      <br><a href="https://www.gironde.gouv.fr/Actualites/Breves/Incendie-Centres-d-accueil" target="_blank" rel="noopener" class="underline font-bold">📞 Liste à jour des centres (préfecture) →</a>
-      <br><a href="https://www.bordeaux-metropole.fr/actualites/incendies-en-gironde-accueil-personnes-evacuees" target="_blank" rel="noopener" class="underline font-bold">📞 Infos Bordeaux Métropole →</a>
-      <br><a href="https://www.landes.gouv.fr/Actualites/Actualites/Incendie-en-cours-retour-des-habitants-dans-les-secteurs-mis-en-securite-de-Biscarrosse" target="_blank" rel="noopener" class="underline font-bold">📞 Retour des habitants à Biscarrosse (préfecture des Landes) →</a>
-      <br><a href="https://www.franceinfo.fr/environnement/evenements-meteorologiques-extremes/incendies-et-feux-de-foret/" target="_blank" rel="noopener" class="underline font-bold">📰 Actualité en direct — France Info →</a>
-      <span class="block mt-1 text-emerald-700/60 text-xs">Résumé vérifié le 27/07/2026 — la situation évolue heure par heure : clique les liens ci-dessus pour les toutes dernières infos.</span>
+    <!-- Info officielle : carte repliable (une ligne fermée, résumé court + liens en chips ouverte) -->
+    <div id="info-card" class="bg-white border border-sand rounded-[14px] shadow-sm mb-4 overflow-hidden" style="border-left:4px solid #059669;">
+      <button id="info-toggle" type="button" class="w-full flex items-center gap-2.5 px-3.5 py-3 text-left" aria-expanded="true" aria-controls="info-body">
+        <span class="shrink-0 w-7 h-7 rounded-full bg-solid-light flex items-center justify-center text-sm" aria-hidden="true">🏛️</span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-[11px] font-extrabold uppercase tracking-wide text-emerald-700">Info officielle · MAJ 27/07</span>
+          <span class="block text-[14.5px] font-semibold text-ink truncate">Centres d'accueil ouverts — certains déjà saturés</span>
+        </span>
+        <span id="info-chevron" class="shrink-0 text-[11px] font-bold text-gray-400 whitespace-nowrap">Replier ▴</span>
+      </button>
+      <div id="info-body" class="px-3.5 pb-3.5 text-xs text-gray-600 leading-relaxed">
+        <p class="mb-2.5">Des centres d'accueil sont ouverts dans <strong>une douzaine de communes</strong> de Gironde et des Landes. <strong>Certains sont déjà saturés</strong> : vérifie la liste à jour avant de t'y rendre. <strong>Les dons se déposent uniquement en mairie</strong>, jamais directement sur les sites d'accueil.</p>
+        <div class="flex flex-wrap gap-1.5">
+          <a href="https://www.gironde.gouv.fr/Actualites/Breves/Incendie-Centres-d-accueil" target="_blank" rel="noopener" class="info-chip">📞 Liste des centres (préfecture)</a>
+          <a href="https://www.bordeaux-metropole.fr/actualites/incendies-en-gironde-accueil-personnes-evacuees" target="_blank" rel="noopener" class="info-chip">🏙️ Bordeaux Métropole</a>
+          <a href="https://www.landes.gouv.fr/Actualites/Actualites/Incendie-en-cours-retour-des-habitants-dans-les-secteurs-mis-en-securite-de-Biscarrosse" target="_blank" rel="noopener" class="info-chip">🏘️ Retour à Biscarrosse</a>
+          <a href="https://www.franceinfo.fr/environnement/evenements-meteorologiques-extremes/incendies-et-feux-de-foret/" target="_blank" rel="noopener" class="info-chip">📰 Actu en direct</a>
+          <a href="https://intentanalytics.fr/feux/assistant" target="_blank" rel="noopener" class="info-chip">🗺️ Carte des feux en direct</a>
+        </div>
+        <span class="block mt-2.5 text-gray-400 text-[11px]">Résumé vérifié le 27/07/2026 — la situation évolue heure par heure : clique les liens ci-dessus pour les toutes dernières infos.</span>
+      </div>
     </div>
 
     <!-- Tableau de bord rapide -->
@@ -177,30 +189,83 @@
       </select>
     </section>
 
-    <!-- Vue Fil / Carte + géolocalisation + masquer clôturées -->
+    <!-- Barre de filtres : segment Tout/Cherche/Propose toujours visible + déclencheurs -->
+    <section class="mt-3 flex flex-wrap items-center gap-2 relative">
+      <div id="facet-type" class="segmented"></div>
+
+      <span class="hidden lg:block w-px h-7 bg-sand mx-0.5" aria-hidden="true"></span>
+
+      <button id="btn-toggle-cat" type="button" class="hidden lg:inline-flex filter-dd-btn" aria-expanded="false" aria-controls="filters-panel">
+        🏷️ Catégorie<span id="badge-cat" class="filter-dd-badge hidden"></span><span class="ml-0.5">▾</span>
+      </button>
+      <button id="btn-toggle-zone" type="button" class="hidden lg:inline-flex filter-dd-btn" aria-expanded="false" aria-controls="filters-panel">
+        📍 Zone<span id="badge-zone" class="filter-dd-badge hidden"></span><span class="ml-0.5">▾</span>
+      </button>
+      <button id="btn-geoloc" type="button" class="hidden lg:inline-flex filter-dd-btn filter-dd-btn--dashed">📡 Autour de moi</button>
+
+      <label class="hidden lg:flex items-center gap-2 ml-auto cursor-pointer select-none">
+        <span class="text-xs font-semibold text-gray-600">Masquer clôturées/en pause</span>
+        <span class="toggle-switch-wrap">
+          <input id="chk-hide-resolved" type="checkbox" class="sr-only">
+          <span class="toggle-switch-track"></span>
+        </span>
+      </label>
+
+      <button id="btn-open-filters" type="button" class="lg:hidden filter-dd-btn ml-auto">
+        ⚙︎ Filtres<span id="badge-filters" class="filter-dd-badge hidden"></span>
+      </button>
+
+      <!-- Panneau partagé : ancré en dropdown sur desktop, tiroir du bas sur mobile -->
+      <div id="filters-panel" role="dialog" aria-modal="true" aria-labelledby="filters-panel-title"
+           class="hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[22px] shadow-2xl p-4 max-h-[85vh] overflow-y-auto
+                  lg:absolute lg:top-full lg:bottom-auto lg:left-0 lg:mt-2 lg:rounded-2xl lg:border lg:border-sand lg:shadow-lg lg:p-3 lg:w-72 lg:z-30 lg:max-h-[70vh]">
+        <button id="btn-close-filters-desktop" type="button" class="hidden lg:flex absolute top-2 right-2 w-7 h-7 items-center justify-center text-gray-400 hover:text-ink text-lg leading-none rounded-full" aria-label="Fermer">×</button>
+        <div class="lg:hidden w-10 h-1.5 bg-gray-300 rounded-full mx-auto mb-3"></div>
+        <div class="lg:hidden flex items-center justify-between mb-3">
+          <h3 id="filters-panel-title" class="font-bold text-sm">Filtres</h3>
+          <button id="btn-reset-filters" type="button" class="text-xs font-bold text-solid">Réinitialiser</button>
+        </div>
+
+        <div id="filters-section-cat">
+          <h4 class="lg:hidden text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5 mt-1">Catégorie</h4>
+          <div id="facet-cat" class="flex flex-col gap-1"></div>
+        </div>
+        <div id="filters-section-zone" class="mt-3">
+          <h4 class="lg:hidden text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Zone</h4>
+          <div id="facet-zone" class="flex flex-col gap-1"></div>
+        </div>
+
+        <!-- Options supplémentaires : uniquement dans le tiroir mobile (déjà visibles en permanence sur desktop) -->
+        <div class="lg:hidden mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2">
+          <button id="btn-geoloc-mobile" type="button" class="filter-dd-btn filter-dd-btn--dashed text-left">📡 Autour de moi</button>
+          <label class="flex items-center justify-between gap-2 cursor-pointer select-none py-1">
+            <span class="text-xs font-semibold text-gray-600">Masquer clôturées/en pause</span>
+            <span class="toggle-switch-wrap">
+              <input id="chk-hide-resolved-mobile" type="checkbox" class="sr-only">
+              <span class="toggle-switch-track"></span>
+            </span>
+          </label>
+        </div>
+
+        <button id="btn-apply-filters" type="button" class="lg:hidden w-full mt-4 bg-ink text-white font-bold uppercase text-sm rounded-xl py-3 min-h-[48px]">
+          Voir <span id="filters-result-count">0</span> résultat<span id="filters-result-plural"></span>
+        </button>
+      </div>
+    </section>
+    <div id="filters-overlay" class="hidden lg:hidden fixed inset-0 bg-ink/40 z-40"></div>
+
+    <!-- Vue Fil / Carte -->
     <section class="mt-3 flex flex-wrap items-center gap-2">
       <div class="flex rounded-xl border border-sand overflow-hidden text-xs font-bold uppercase tracking-wide">
         <button id="btn-view-feed" data-active="true" class="view-toggle-btn min-h-[44px] px-3.5">☰ Fil</button>
         <button id="btn-view-map" data-active="false" class="view-toggle-btn min-h-[44px] px-3.5 border-l border-sand">🗺️ Carte</button>
       </div>
-      <button id="btn-geoloc" class="min-h-[44px] text-xs font-bold uppercase tracking-wide bg-white border border-sand rounded-xl px-3.5 text-gray-700">📍 Autour de moi</button>
-      <label class="tap-target-checkbox gap-1.5 text-xs font-semibold text-gray-600 ml-auto cursor-pointer select-none">
-        <input id="chk-hide-resolved" type="checkbox" class="rounded border-sand">
-        Masquer clôturées/en pause
-      </label>
     </section>
 
     <!-- Carte interactive -->
     <section id="map-view" class="hidden mt-3 rounded-2xl border border-sand overflow-hidden">
       <div id="map-container" style="height: 360px;"></div>
       <p class="text-xs text-gray-500 px-3 py-2 bg-white">📍 Seules les annonces avec une adresse choisie via les suggestions (pas en saisie libre) apparaissent sur la carte.</p>
-    </section>
-
-    <!-- Filtres : rangées en ligne, flex-wrap (jamais tronquées) -->
-    <section class="mt-4 space-y-2">
-      <div id="facet-type" class="flex flex-wrap items-center gap-2"></div>
-      <div id="facet-cat" class="flex flex-wrap items-center gap-2"></div>
-      <div id="facet-zone" class="flex flex-wrap items-center gap-2"></div>
     </section>
 
     <!-- Bandeau défilant (ticker) : remerciements + messages de soutien + actus RSS, mélangés -->
@@ -439,7 +504,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 <script src="firebase-config.js?v=2"></script>
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

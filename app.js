@@ -393,6 +393,32 @@ const mapContainer = el('map-container');
 const btnGeoloc = el('btn-geoloc');
 const chkHideResolved = el('chk-hide-resolved');
 
+// Refonte filtres : panneau partagé (dropdown desktop / tiroir mobile),
+// déclencheurs, options dupliquées dans le tiroir mobile (voir plus bas
+// pour la logique de synchronisation avec leurs équivalents desktop).
+const btnToggleCat = el('btn-toggle-cat');
+const btnToggleZone = el('btn-toggle-zone');
+const btnOpenFilters = el('btn-open-filters');
+const btnCloseFiltersDesktop = el('btn-close-filters-desktop');
+const btnResetFilters = el('btn-reset-filters');
+const btnApplyFilters = el('btn-apply-filters');
+const btnGeolocMobile = el('btn-geoloc-mobile');
+const chkHideResolvedMobile = el('chk-hide-resolved-mobile');
+const filtersPanel = el('filters-panel');
+const filtersOverlay = el('filters-overlay');
+const filtersSectionCat = el('filters-section-cat');
+const filtersSectionZone = el('filters-section-zone');
+const badgeCat = el('badge-cat');
+const badgeZone = el('badge-zone');
+const badgeFilters = el('badge-filters');
+const filtersResultCount = el('filters-result-count');
+const filtersResultPlural = el('filters-result-plural');
+
+// Carte "Info officielle" repliable
+const infoCard = el('info-card');
+const infoToggle = el('info-toggle');
+const infoChevron = el('info-chevron');
+
 /* =====================================================================
    IDENTITÉ (mémorisée pour préremplir le formulaire, jamais bloquante)
 ===================================================================== */
@@ -643,11 +669,25 @@ function renderFacets(all, searchFiltered) {
     btn.addEventListener('click', () => { filterType = btn.getAttribute('data-filter-type'); currentPage = 1; renderFeed(); });
   });
   facetCat.querySelectorAll('[data-filter-cat]').forEach(btn => {
-    btn.addEventListener('click', () => { filterCat = btn.getAttribute('data-filter-cat'); currentPage = 1; renderFeed(); });
+    btn.addEventListener('click', () => {
+      filterCat = btn.getAttribute('data-filter-cat'); currentPage = 1; renderFeed();
+      if (isDesktopFilters()) closeFiltersPanel(); // sur desktop, choisir referme le dropdown ; sur mobile, on laisse choisir cat+zone avant de fermer
+    });
   });
   facetZone.querySelectorAll('[data-filter-zone]').forEach(btn => {
-    btn.addEventListener('click', () => { filterZone = btn.getAttribute('data-filter-zone'); currentPage = 1; renderFeed(); });
+    btn.addEventListener('click', () => {
+      filterZone = btn.getAttribute('data-filter-zone'); currentPage = 1; renderFeed();
+      if (isDesktopFilters()) closeFiltersPanel();
+    });
   });
+
+  // Badges de filtres actifs (bouton Catégorie/Zone desktop + bouton Filtres mobile)
+  const catActive = filterCat !== 'all';
+  const zoneActive = filterZone !== 'all';
+  const activeCount = (catActive ? 1 : 0) + (zoneActive ? 1 : 0) + (hideResolved ? 1 : 0);
+  if (badgeCat) { badgeCat.textContent = catActive ? '1' : ''; badgeCat.classList.toggle('hidden', !catActive); }
+  if (badgeZone) { badgeZone.textContent = zoneActive ? '1' : ''; badgeZone.classList.toggle('hidden', !zoneActive); }
+  if (badgeFilters) { badgeFilters.textContent = activeCount ? String(activeCount) : ''; badgeFilters.classList.toggle('hidden', !activeCount); }
 }
 
 /* =====================================================================
@@ -754,6 +794,8 @@ function renderFeed() {
   const pageItems = result.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   resultCount.textContent = result.length ? `${result.length} annonce${result.length > 1 ? 's' : ''}` : '';
+  if (filtersResultCount) filtersResultCount.textContent = String(result.length);
+  if (filtersResultPlural) filtersResultPlural.textContent = result.length > 1 ? 's' : '';
 
   if (viewMode === 'map') return; // le fil/pagination restent masqués, la carte a déjà été mise à jour ci-dessus
 
@@ -917,16 +959,22 @@ btnViewMap.addEventListener('click', () => setViewMode('map'));
    GÉOLOCALISATION « AUTOUR DE MOI »
 ===================================================================== */
 
-btnGeoloc.addEventListener('click', () => {
+/* =====================================================================
+   GÉOLOCALISATION « AUTOUR DE MOI » (bouton dupliqué : barre desktop +
+   tiroir mobile — les deux déclenchent exactement le même comportement)
+===================================================================== */
+
+function triggerGeoloc(sourceBtn) {
   if (!('geolocation' in navigator)) {
     showToast("Géolocalisation non disponible sur cet appareil");
     return;
   }
-  btnGeoloc.textContent = '📍 Localisation…';
+  const allGeolocBtns = [btnGeoloc, btnGeolocMobile].filter(Boolean);
+  allGeolocBtns.forEach(b => b.textContent = '📍 Localisation…');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      btnGeoloc.textContent = '📍 Autour de moi ✓';
+      allGeolocBtns.forEach(b => b.textContent = '📍 Autour de moi ✓');
       const distOption = sortSelect.querySelector('option[value="distance"]');
       if (distOption) distOption.disabled = false;
       sortSelect.value = 'distance';
@@ -935,23 +983,133 @@ btnGeoloc.addEventListener('click', () => {
       renderFeed();
     },
     (err) => {
-      btnGeoloc.textContent = '📍 Autour de moi';
+      allGeolocBtns.forEach(b => b.textContent = '📍 Autour de moi');
       showToast("Localisation refusée ou indisponible");
       console.warn('[UEI] Géolocalisation refusée/indisponible', err);
     },
     { enableHighAccuracy: false, timeout: 8000 }
   );
-});
+}
+btnGeoloc.addEventListener('click', () => triggerGeoloc(btnGeoloc));
+if (btnGeolocMobile) btnGeolocMobile.addEventListener('click', () => triggerGeoloc(btnGeolocMobile));
 
 /* =====================================================================
-   MASQUER LES ANNONCES POURVUES / EN PAUSE
+   MASQUER LES ANNONCES POURVUES / EN PAUSE (case à cocher dupliquée :
+   barre desktop + tiroir mobile, toujours synchronisées entre elles)
 ===================================================================== */
 
-chkHideResolved.addEventListener('change', () => {
-  hideResolved = chkHideResolved.checked;
+function setHideResolved(val) {
+  hideResolved = val;
+  chkHideResolved.checked = val;
+  if (chkHideResolvedMobile) chkHideResolvedMobile.checked = val;
+  currentPage = 1;
+  renderFeed();
+}
+chkHideResolved.addEventListener('change', () => setHideResolved(chkHideResolved.checked));
+if (chkHideResolvedMobile) chkHideResolvedMobile.addEventListener('change', () => setHideResolved(chkHideResolvedMobile.checked));
+
+/* =====================================================================
+   PANNEAU DE FILTRES PARTAGÉ — dropdown ancré sur desktop (Catégorie OU
+   Zone, un seul à la fois), tiroir du bas sur mobile (Catégorie ET Zone
+   ensemble). Un seul jeu de facet-cat/facet-zone dans le DOM (voir HTML),
+   la même liste sert donc dans les deux présentations sans dupliquer la
+   logique de filtrage.
+===================================================================== */
+
+function isDesktopFilters() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches;
+}
+
+let filtersPanelOpen = false;
+
+function openFiltersPanel(mode, anchorBtn) {
+  filtersPanel.classList.remove('hidden');
+  if (isDesktopFilters()) {
+    // Desktop : un seul des deux blocs visible à la fois, ancré sous le bouton cliqué
+    filtersSectionCat.classList.toggle('hidden', mode !== 'cat');
+    filtersSectionZone.classList.toggle('hidden', mode !== 'zone');
+    if (anchorBtn) {
+      filtersPanel.style.left = anchorBtn.offsetLeft + 'px';
+    }
+    btnToggleCat.setAttribute('aria-expanded', String(mode === 'cat'));
+    btnToggleZone.setAttribute('aria-expanded', String(mode === 'zone'));
+    btnToggleCat.setAttribute('data-active', String(mode === 'cat'));
+    btnToggleZone.setAttribute('data-active', String(mode === 'zone'));
+  } else {
+    // Mobile : les deux sections toujours ensemble dans le tiroir
+    filtersSectionCat.classList.remove('hidden');
+    filtersSectionZone.classList.remove('hidden');
+    filtersOverlay.classList.remove('hidden');
+    btnOpenFilters.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+  filtersPanelOpen = true;
+}
+
+function closeFiltersPanel() {
+  filtersPanel.classList.add('hidden');
+  filtersOverlay.classList.add('hidden');
+  btnToggleCat.setAttribute('aria-expanded', 'false');
+  btnToggleZone.setAttribute('aria-expanded', 'false');
+  btnToggleCat.setAttribute('data-active', 'false');
+  btnToggleZone.setAttribute('data-active', 'false');
+  btnOpenFilters.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+  filtersPanelOpen = false;
+}
+
+btnToggleCat.addEventListener('click', () => {
+  if (filtersPanelOpen && filtersPanel.getAttribute('data-mode') === 'cat') { closeFiltersPanel(); return; }
+  filtersPanel.setAttribute('data-mode', 'cat');
+  openFiltersPanel('cat', btnToggleCat);
+});
+btnToggleZone.addEventListener('click', () => {
+  if (filtersPanelOpen && filtersPanel.getAttribute('data-mode') === 'zone') { closeFiltersPanel(); return; }
+  filtersPanel.setAttribute('data-mode', 'zone');
+  openFiltersPanel('zone', btnToggleZone);
+});
+btnOpenFilters.addEventListener('click', () => {
+  if (filtersPanelOpen) { closeFiltersPanel(); return; }
+  filtersPanel.setAttribute('data-mode', 'both');
+  openFiltersPanel('both', btnOpenFilters);
+});
+btnCloseFiltersDesktop.addEventListener('click', closeFiltersPanel);
+btnApplyFilters.addEventListener('click', closeFiltersPanel);
+filtersOverlay.addEventListener('click', closeFiltersPanel);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && filtersPanelOpen) closeFiltersPanel();
+});
+document.addEventListener('click', (e) => {
+  // Fermeture au clic extérieur, desktop uniquement (le tiroir mobile a son overlay dédié)
+  if (!filtersPanelOpen || !isDesktopFilters()) return;
+  if (filtersPanel.contains(e.target) || btnToggleCat.contains(e.target) || btnToggleZone.contains(e.target)) return;
+  closeFiltersPanel();
+});
+
+btnResetFilters.addEventListener('click', () => {
+  filterCat = 'all';
+  filterZone = 'all';
+  setHideResolved(false);
   currentPage = 1;
   renderFeed();
 });
+
+/* =====================================================================
+   CARTE "INFO OFFICIELLE" REPLIABLE — ouverte par défaut sur desktop,
+   repliée par défaut sur mobile (une seule ligne, moins envahissant)
+===================================================================== */
+
+if (infoCard && infoToggle) {
+  infoCard.setAttribute('data-open', isDesktopFilters() ? 'true' : 'false');
+  infoToggle.setAttribute('aria-expanded', isDesktopFilters() ? 'true' : 'false');
+  infoChevron.textContent = isDesktopFilters() ? 'Replier ▴' : 'Détails ▾';
+  infoToggle.addEventListener('click', () => {
+    const nowOpen = infoCard.getAttribute('data-open') !== 'true';
+    infoCard.setAttribute('data-open', String(nowOpen));
+    infoToggle.setAttribute('aria-expanded', String(nowOpen));
+    infoChevron.textContent = nowOpen ? 'Replier ▴' : 'Détails ▾';
+  });
+}
 
 /* =====================================================================
    AUTOCOMPLÉTION D'ADRESSE (API Adresse — Base Adresse Nationale,
