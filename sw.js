@@ -11,7 +11,7 @@
    script tiers, ni gêner la synchronisation en temps réel.
 ===================================================================== */
 
-const CACHE_NAME = 'uei-shell-v30';
+const CACHE_NAME = 'uei-shell-v31';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -66,7 +66,19 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req).then((res) => {
-        if (res && res.ok) caches.open(CACHE_NAME).then((c) => c.put(req, res.clone()));
+        // ⚠️ Le clonage doit être fait ICI, immédiatement, sur le même tick
+        // que la réception de la réponse — pas après un .then() sur
+        // caches.open() (asynchrone). Sinon, le corps de la réponse peut
+        // déjà avoir commencé à être consommé ailleurs au moment où
+        // res.clone() s'exécute, ce qui déclenche l'erreur "Response body
+        // is already used" et casse silencieusement le chargement de
+        // app.js — avec pour conséquence des boutons qui semblent inertes
+        // (leurs gestionnaires de clic n'ont jamais pu s'attacher). Bug
+        // corrigé le 28/07.
+        if (res && res.ok) {
+          const resToCache = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, resToCache));
+        }
         return res;
       }).catch(() => cached);
       return cached || network;
