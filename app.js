@@ -408,6 +408,7 @@ const filtersPanel = el('filters-panel');
 const filtersOverlay = el('filters-overlay');
 const filtersSectionCat = el('filters-section-cat');
 const filtersSectionZone = el('filters-section-zone');
+const zoneSearchBox = el('zone-search-box');
 const badgeCat = el('badge-cat');
 const badgeZone = el('badge-zone');
 const badgeFilters = el('badge-filters');
@@ -663,7 +664,13 @@ function renderFacets(all, searchFiltered) {
   const zones = [...new Set(all.map(a => a.commune))].sort((a, b) => a.localeCompare(b, 'fr'));
   facetZone.innerHTML =
     facetRow('📍 Toutes zones', byZone.length, filterZone === 'all', `data-filter-zone="all"`) +
-    zones.map(z => facetRow(escapeHTML(z), byZone.filter(a => a.commune === z).length, filterZone === z, `data-filter-zone="${escapeHTML(z)}"`)).join('');
+    zones.map(z => facetRow(escapeHTML(z), byZone.filter(a => a.commune === z).length, filterZone === z, `data-filter-zone="${escapeHTML(z)}" data-zone-label="${escapeHTML(normalizeText(z))}"`)).join('');
+  // Au-delà d'une poignée de communes (typiquement dès qu'il y a plusieurs
+  // dizaines d'annonces réparties sur le territoire), une liste plate
+  // devient difficile à parcourir : on affiche alors un champ de recherche
+  // qui filtre la liste en direct (voir listener plus bas, attaché une
+  // seule fois puisque le champ lui-même n'est jamais reconstruit).
+  if (zoneSearchBox) zoneSearchBox.classList.toggle('hidden', zones.length <= 8);
 
   facetType.querySelectorAll('[data-filter-type]').forEach(btn => {
     btn.addEventListener('click', () => { filterType = btn.getAttribute('data-filter-type'); currentPage = 1; renderFeed(); });
@@ -1024,6 +1031,10 @@ let filtersPanelOpen = false;
 
 function openFiltersPanel(mode, anchorBtn) {
   filtersPanel.classList.remove('hidden');
+  if (zoneSearchBox && (mode === 'zone' || mode === 'both')) {
+    zoneSearchBox.value = '';
+    facetZone.querySelectorAll('[data-filter-zone]').forEach(btn => btn.classList.remove('hidden'));
+  }
   if (isDesktopFilters()) {
     // Desktop : un seul des deux blocs visible à la fois, ancré sous le bouton cliqué
     filtersSectionCat.classList.toggle('hidden', mode !== 'cat');
@@ -1093,6 +1104,19 @@ btnResetFilters.addEventListener('click', () => {
   currentPage = 1;
   renderFeed();
 });
+
+// Recherche en direct dans la liste des zones (utile dès que la liste
+// s'allonge — voir le seuil d'affichage du champ dans renderFacets)
+if (zoneSearchBox) {
+  zoneSearchBox.addEventListener('input', () => {
+    const q = normalizeText(zoneSearchBox.value.trim());
+    facetZone.querySelectorAll('[data-filter-zone]').forEach(btn => {
+      if (btn.getAttribute('data-filter-zone') === 'all') return; // "Toutes zones" toujours visible
+      const label = btn.getAttribute('data-zone-label') || '';
+      btn.classList.toggle('hidden', q.length > 0 && !label.includes(q));
+    });
+  });
+}
 
 /* =====================================================================
    CARTE "INFO OFFICIELLE" REPLIABLE — ouverte par défaut sur desktop,

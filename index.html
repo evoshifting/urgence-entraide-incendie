@@ -48,7 +48,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Urgence Entraide Incendie">
 
-<link rel="stylesheet" href="tailwind-built.css?v=10">
+<link rel="stylesheet" href="tailwind-built.css?v=11">
 <link rel="stylesheet" href="style.css?v=8">
 <script>
   // Filet de sécurité global : si une erreur JS fatale survient malgré tout,
@@ -232,6 +232,8 @@
         </div>
         <div id="filters-section-zone" class="mt-3">
           <h4 class="lg:hidden text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Zone</h4>
+          <input id="zone-search-box" type="search" placeholder="🔍 Rechercher une commune…"
+            class="hidden w-full min-h-[40px] rounded-lg border border-sand px-3 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-solid">
           <div id="facet-zone" class="flex flex-col gap-1"></div>
         </div>
 
@@ -504,7 +506,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 <script src="firebase-config.js?v=2"></script>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=29"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
